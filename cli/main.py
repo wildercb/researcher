@@ -314,17 +314,76 @@ def pipeline() -> None:
 
 
 @pipeline.command("run")
-@click.option("--source", help="Run pipeline for a specific source")
-@click.option("--since", help="Process items since date")
-def pipeline_run(source: str | None, since: str | None) -> None:
+@click.option("--source", "source_name", help="Run pipeline for a specific source")
+@click.option("--since", help="Process items since date (YYYY-MM-DD)")
+@click.option("--no-enrich", is_flag=True, help="Skip LLM enrichment")
+def pipeline_run(source_name: str | None, since: str | None, no_enrich: bool) -> None:
     """Run the ingestion pipeline."""
-    click.echo("Pipeline will be fully wired in Phase 2")
+    import asyncio
+
+    from packages.core.config import get_settings
+    from packages.core.storage import create_storage
+    from packages.pipeline.runner import run_pipeline
+
+    settings = get_settings()
+    storage = create_storage(settings)
+
+    since_dt = None
+    if since:
+        since_dt = datetime.strptime(since, "%Y-%m-%d")
+
+    sources_to_run = []
+    if source_name:
+        sources_to_run = [source_name]
+    else:
+        config = _load_sources_config()
+        sources_to_run = [name for name, cfg in config.items() if cfg.get("enabled")]
+
+    async def _run():
+        await storage.init()
+        try:
+            for src in sources_to_run:
+                click.echo(f"Running pipeline for {src}...")
+                result = await run_pipeline(
+                    source_name=src,
+                    storage=storage,
+                    since=since_dt,
+                    enrich=not no_enrich,
+                )
+                click.echo(
+                    f"  Fetched: {result.fetched} | New: {result.new_items} | "
+                    f"Dupes: {result.duplicates} | Enriched: {result.enriched} | "
+                    f"Failed: {result.failed} | {result.elapsed_seconds:.1f}s"
+                )
+        finally:
+            await storage.close()
+
+    asyncio.run(_run())
 
 
 @pipeline.command("retry-failed")
-def pipeline_retry() -> None:
+@click.option("--limit", default=100, type=int, help="Max items to retry")
+def pipeline_retry(limit: int) -> None:
     """Retry failed pipeline items."""
-    click.echo("Pipeline retry will be fully wired in Phase 2")
+    import asyncio
+
+    from packages.core.config import get_settings
+    from packages.core.storage import create_storage
+    from packages.pipeline.backfill import backfill_enrichment
+
+    settings = get_settings()
+    storage = create_storage(settings)
+
+    async def _retry():
+        await storage.init()
+        try:
+            async with storage.session() as session:
+                count = await backfill_enrichment(session, limit=limit)
+                click.echo(f"Re-enriched {count} items.")
+        finally:
+            await storage.close()
+
+    asyncio.run(_retry())
 
 
 # --- Export / Import ---
