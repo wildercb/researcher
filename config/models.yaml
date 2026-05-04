@@ -1,46 +1,58 @@
 # Atlas LLM model configuration
 # All LLM calls go through LiteLLM. Change models here, not in code.
+#
+# Current: Ollama local (qwen3.5:9b) — no API key needed
+# To use Anthropic: set ANTHROPIC_API_KEY and change models to anthropic/claude-*
+# To use OpenAI: set OPENAI_API_KEY and change models to openai/gpt-*
 
 default:
-  model: "openai/gpt-4o-mini"
+  model: "ollama/qwen3.5:9b"
   temperature: 0.3
   max_tokens: 4096
 
 agents:
   relevance_scorer:
-    model: "openai/gpt-4o-mini"
+    model: "ollama/qwen3.5:9b"
     temperature: 0.1
   classifier:
-    model: "openai/gpt-4o-mini"
+    model: "ollama/qwen3.5:9b"
     temperature: 0.0
   summarizer:
-    model: "openai/gpt-4o-mini"
+    model: "ollama/qwen3.5:9b"
     temperature: 0.3
   briefing_writer:
-    model: "openai/gpt-4o"
+    model: "ollama/qwen3.5:9b"
     temperature: 0.5
   ideation_agent:
-    model: "openai/gpt-4o"
+    model: "ollama/qwen3.5:9b"
     temperature: 0.7
   fit_agent:
-    model: "openai/gpt-4o"
+    model: "ollama/qwen3.5:9b"
     temperature: 0.3
   trend_detector:
-    model: "openai/gpt-4o-mini"
+    model: "ollama/qwen3.5:9b"
     temperature: 0.1
   controversy_watcher:
-    model: "openai/gpt-4o-mini"
+    model: "ollama/qwen3.5:9b"
     temperature: 0.2
   seed_scout:
-    model: "openai/gpt-4o-mini"
+    model: "ollama/qwen3.5:9b"
+    temperature: 0.3
+  general:
+    model: "ollama/qwen3.5:9b"
     temperature: 0.3
 
+# To switch to Anthropic Claude:
+#   export ANTHROPIC_API_KEY=sk-ant-...
+#   Change all models to: anthropic/claude-haiku-4-5-20251001 (fast/cheap)
+#   Or: anthropic/claude-sonnet-4-20250514 (smarter)
+
 embedding:
-  model: "openai/text-embedding-3-small"
-  dimensions: 1536
+  model: "ollama/nomic-embed-text"
+  dimensions: 768
 
 daily_cost_cap_usd: 5.00
 
 fallback:
   enabled: true
-  model: "openai/gpt-4o-mini"
+  model: "ollama/qwen3.5:9b"

@@ -55,7 +55,7 @@ export async function fetchItems(params?: {
   if (params?.sort) searchParams.set("sort", params.sort);
   if (params?.limit) searchParams.set("limit", String(params.limit));
   const qs = searchParams.toString();
-  return request(`/api/items${qs ? `?${qs}` : ""}`);
+  return request(`/api/items/${qs ? `?${qs}` : ""}`);
 }
 
 export async function sendFeedback(itemId: number, signal: string): Promise<void> {
@@ -76,11 +76,11 @@ export interface SeedData {
 }
 
 export async function fetchSeeds(): Promise<{ seeds: SeedData[] }> {
-  return request("/api/seeds");
+  return request("/api/seeds/");
 }
 
 export async function addSeed(seed: { type: string; identifier: string; weight?: number }): Promise<{ id: number }> {
-  return request("/api/seeds", { method: "POST", body: JSON.stringify(seed) });
+  return request("/api/seeds/", { method: "POST", body: JSON.stringify(seed) });
 }
 
 export async function deleteSeed(id: number): Promise<void> {
@@ -95,7 +95,7 @@ export async function sendChat(messages: { content: string; role: string }[]): P
   model: string | null;
   cost_usd: number;
 }> {
-  return request("/api/chat", { method: "POST", body: JSON.stringify({ messages }) });
+  return request("/api/chat/", { method: "POST", body: JSON.stringify({ messages }) });
 }
 
 // Trends
@@ -107,12 +107,12 @@ export interface TrendData {
 }
 
 export async function fetchTrends(): Promise<{ trends: TrendData[] }> {
-  return request("/api/trends");
+  return request("/api/trends/");
 }
 
 // Calibrate
 export async function triggerCalibrate(depth?: number, maxItems?: number): Promise<{ status: string }> {
-  return request("/api/calibrate", {
+  return request("/api/calibrate/", {
     method: "POST",
     body: JSON.stringify({ depth: depth || 1, max_items: maxItems || 500 }),
   });

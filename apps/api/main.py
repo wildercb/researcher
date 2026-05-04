@@ -20,13 +20,11 @@ if TYPE_CHECKING:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # Startup
     storage = get_storage_instance()
     await storage.init()
     scheduler = get_scheduler_instance()
     await scheduler.start()
     yield
-    # Shutdown
     await scheduler.stop()
     await storage.close()
 
@@ -38,11 +36,12 @@ def create_app() -> FastAPI:
         description="Research Intelligence Platform",
         version="0.1.0",
         lifespan=lifespan,
+        redirect_slashes=True,
     )
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://localhost:8765"],
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
