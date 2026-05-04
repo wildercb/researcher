@@ -1,0 +1,96 @@
+version: "3.9"
+
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN env var}
+    networks:
+      - atlas
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-atlas_dev}
+      POSTGRES_DB: atlas
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - atlas
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://atlas:${POSTGRES_PASSWORD:-atlas_dev}@postgres:5432/atlas
+      ATLAS_MODE: vps
+    ports:
+      - "8765:8765"
+    networks:
+      - atlas
+
+  web:
+    image: node:20-slim
+    working_dir: /app
+    volumes:
+      - ../apps/web:/app
+    command: ["npx", "pnpm", "dev"]
+    ports:
+      - "3000:3000"
+    profiles:
+      - dev
+    networks:
+      - atlas
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "-m", "packages.worker.main"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://atlas:${POSTGRES_PASSWORD:-atlas_dev}@postgres:5432/atlas
+      ATLAS_MODE: vps
+    networks:
+      - atlas
+
+  prefect:
+    image: prefecthq/prefect:2-python3.12
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    command: ["prefect", "server", "start", "--host", "0.0.0.0"]
+    networks:
+      - atlas
+
+networks:
+  atlas:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

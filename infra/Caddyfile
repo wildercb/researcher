@@ -1,0 +1,7 @@
+{$DOMAIN} {
+	# API routes
+	reverse_proxy /api/* api:8765
+
+	# Everything else (FastAPI serves static files in VPS mode)
+	reverse_proxy api:8765
+}

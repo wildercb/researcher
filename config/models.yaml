@@ -1,0 +1,46 @@
+# Atlas LLM model configuration
+# All LLM calls go through LiteLLM. Change models here, not in code.
+
+default:
+  model: "openai/gpt-4o-mini"
+  temperature: 0.3
+  max_tokens: 4096
+
+agents:
+  relevance_scorer:
+    model: "openai/gpt-4o-mini"
+    temperature: 0.1
+  classifier:
+    model: "openai/gpt-4o-mini"
+    temperature: 0.0
+  summarizer:
+    model: "openai/gpt-4o-mini"
+    temperature: 0.3
+  briefing_writer:
+    model: "openai/gpt-4o"
+    temperature: 0.5
+  ideation_agent:
+    model: "openai/gpt-4o"
+    temperature: 0.7
+  fit_agent:
+    model: "openai/gpt-4o"
+    temperature: 0.3
+  trend_detector:
+    model: "openai/gpt-4o-mini"
+    temperature: 0.1
+  controversy_watcher:
+    model: "openai/gpt-4o-mini"
+    temperature: 0.2
+  seed_scout:
+    model: "openai/gpt-4o-mini"
+    temperature: 0.3
+
+embedding:
+  model: "openai/text-embedding-3-small"
+  dimensions: 1536
+
+daily_cost_cap_usd: 5.00
+
+fallback:
+  enabled: true
+  model: "openai/gpt-4o-mini"

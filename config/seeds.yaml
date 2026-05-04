@@ -1,0 +1,25 @@
+# Atlas seed configuration
+# Seeds are the anchors that calibrate the system to your research interests.
+# Add papers, authors, venues, and keywords here.
+
+papers: []
+  # - doi: "10.1145/3442188.3445922"
+  # - arxiv: "2310.06825"
+  # - title: "Attention is All You Need"
+
+authors: []
+  # - name: "Yann LeCun"
+  #   orcid: "0000-0001-..."
+
+venues: []
+  # - name: "NeurIPS"
+  # - name: "ICML"
+
+keywords: []
+  # - term: "mechanistic interpretability"
+  #   weight: 1.5
+
+negative:
+  authors: []
+  topics: []
+  venues: []

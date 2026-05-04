@@ -1,0 +1,41 @@
+# Atlas source configuration
+# Each source type can have multiple feeds configured.
+
+arxiv:
+  enabled: true
+  categories: [cs.LG, cs.CL, cs.AI, stat.ML]
+  cadence: "0 */6 * * *"
+
+openalex:
+  enabled: true
+  cadence: "0 */12 * * *"
+
+semantic_scholar:
+  enabled: true
+  cadence: "0 */12 * * *"
+
+openreview:
+  enabled: false
+  cadence: "0 0 * * *"
+
+rss:
+  enabled: true
+  cadence: "0 */6 * * *"
+  feeds: []
+    # - name: "Distill"
+    #   url: "https://distill.pub/rss.xml"
+
+hacker_news:
+  enabled: false
+  cadence: "0 */3 * * *"
+  domain_whitelist: []
+
+bluesky:
+  enabled: false
+  handles: []
+  queries: []
+  cadence: "0 */4 * * *"
+
+conference_deadlines:
+  enabled: false
+  cadence: "0 0 * * 1"

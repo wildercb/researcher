@@ -1,0 +1,84 @@
+[project]
+name = "atlas"
+version = "0.1.0"
+description = "Research intelligence platform"
+requires-python = ">=3.12"
+dependencies = [
+    # Web
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    # Database
+    "sqlalchemy[asyncio]>=2.0",
+    "alembic>=1.14",
+    "aiosqlite>=0.20",
+    "asyncpg>=0.30",
+    "pgvector>=0.3",
+    "sqlite-vec>=0.1",
+    # Models & config
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    # CLI
+    "click>=8.1",
+    # HTTP
+    "httpx>=0.28",
+    # LLM
+    "litellm>=1.55",
+    # Agents
+    "langgraph>=0.2",
+    "pydantic-ai>=0.1",
+    # Scheduling
+    "apscheduler>=3.10,<4",
+    # Observability
+    "logfire>=2.0",
+    "structlog>=24.4",
+    # Data
+    "pyyaml>=6.0",
+    "numpy>=1.26",
+]
+
+[project.scripts]
+atlas = "cli.main:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["packages", "apps", "cli"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "hypothesis>=6.115",
+    "pre-commit>=4.0",
+    "pytest-recording>=0.13",
+    "vcrpy>=6.0",
+    "httpx",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "litellm.*",
+    "langgraph.*",
+    "pydantic_ai.*",
+    "apscheduler.*",
+    "sqlite_vec.*",
+    "logfire.*",
+    "structlog.*",
+]
+ignore_missing_imports = true
