@@ -88,14 +88,45 @@ export async function deleteSeed(id: number): Promise<void> {
 }
 
 // Chat
-export async function sendChat(messages: { content: string; role: string }[]): Promise<{
+export interface ConversationSummary {
+  id: number;
+  title: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ChatResponse {
   response: string;
   agent: string | null;
-  intent: string;
+  intent?: string;
   model: string | null;
   cost_usd: number;
+  conversation_id: number;
+}
+
+export async function sendChat(
+  messages: { content: string; role: string }[],
+  conversationId?: number,
+): Promise<ChatResponse> {
+  return request("/api/chat/", {
+    method: "POST",
+    body: JSON.stringify({ messages, conversation_id: conversationId }),
+  });
+}
+
+export async function fetchConversations(): Promise<{ conversations: ConversationSummary[] }> {
+  return request("/api/chat/conversations/");
+}
+
+export async function fetchConversation(id: number): Promise<{
+  id: number; title: string;
+  messages: { id: number; role: string; content: string; agent: string | null; cost_usd: number; created_at: string | null }[];
 }> {
-  return request("/api/chat/", { method: "POST", body: JSON.stringify({ messages }) });
+  return request(`/api/chat/conversations/${id}`);
+}
+
+export async function deleteConversation(id: number): Promise<void> {
+  await request(`/api/chat/conversations/${id}`, { method: "DELETE" });
 }
 
 // Trends

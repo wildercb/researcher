@@ -225,3 +225,33 @@ class PromptVersion(Base):
     __table_args__ = (
         Index("ix_prompt_versions_agent_version", "agent_name", "version", unique=True),
     )
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    title: Mapped[str] = mapped_column(String(256), default="New conversation")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    messages: Mapped[list[ChatMessage]] = relationship(
+        back_populates="conversation", order_by="ChatMessage.created_at"
+    )
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.id"))
+    role: Mapped[str] = mapped_column(String(16))  # user, assistant
+    content: Mapped[str] = mapped_column(Text)
+    agent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    conversation: Mapped[Conversation] = relationship(back_populates="messages")
