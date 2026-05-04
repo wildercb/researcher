@@ -1,29 +1,41 @@
-# Atlas source configuration
-# Each source type can have multiple feeds configured.
+# Atlas source configuration — Wilder Baldwin's research feeds
 
 arxiv:
   enabled: true
-  categories: [cs.LG, cs.CL, cs.AI, stat.ML]
+  categories: [cs.SE, cs.AI, cs.CL, cs.LG, cs.CR]
   cadence: "0 */6 * * *"
 
 openalex:
   enabled: true
+  mailto: "atlas@localhost"
   cadence: "0 */12 * * *"
 
 semantic_scholar:
   enabled: true
+  queries:
+    - "privacy requirements engineering LLM"
+    - "knowledge graph policy compliance"
+    - "AI ethics software development"
+    - "privacy by design software"
+    - "LLM code generation requirements"
   cadence: "0 */12 * * *"
 
 openreview:
-  enabled: false
+  enabled: true
+  venues:
+    - "NeurIPS 2025"
+    - "ICLR 2025"
+    - "COLM 2025"
   cadence: "0 0 * * *"
 
 rss:
   enabled: true
   cadence: "0 */6 * * *"
-  feeds: []
-    # - name: "Distill"
-    #   url: "https://distill.pub/rss.xml"
+  feeds:
+    - name: "Google AI Blog"
+      url: "https://blog.google/technology/ai/rss/"
+    - name: "OpenAI Blog"
+      url: "https://openai.com/blog/rss.xml"
 
 hacker_news:
   enabled: false

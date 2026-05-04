@@ -1,25 +1,41 @@
-# Atlas seed configuration
-# Seeds are the anchors that calibrate the system to your research interests.
-# Add papers, authors, venues, and keywords here.
+# Atlas seeds — Wilder Baldwin's research interests
+# Generated 2026-05-04
 
-papers: []
-  # - doi: "10.1145/3442188.3445922"
-  # - arxiv: "2310.06825"
-  # - title: "Attention is All You Need"
+papers:
+  - arxiv: "2604.27713"     # Knowledge Graph Representations for LLM-Based Policy Compliance Reasoning
+  - arxiv: "2508.09219"     # Ethics Practices in AI Development
+  - arxiv: "2506.23014"     # Generating Privacy Stories From Software Documentation
 
-authors: []
-  # - name: "Yann LeCun"
-  #   orcid: "0000-0001-..."
+authors:
+  - name: "Wilder Baldwin"
+  - name: "Sepideh Ghanavati"    # advisor / co-author from PERC lab
 
-venues: []
-  # - name: "NeurIPS"
-  # - name: "ICML"
+venues:
+  - name: "Requirements Engineering"
+  - name: "Conference on Language Modeling"
+  - name: "NeurIPS"
+  - name: "ICLR"
+  - name: "ACM Transactions on Software Engineering and Methodology"
+  - name: "International Conference on Software Engineering"
+  - name: "ACM SIGSOFT Foundations of Software Engineering"
 
-keywords: []
-  # - term: "mechanistic interpretability"
-  #   weight: 1.5
+keywords:
+  - term: "privacy requirements engineering"
+    weight: 1.5
+  - term: "LLM policy compliance"
+    weight: 1.5
+  - term: "AI ethics software development"
+    weight: 1.2
+  - term: "knowledge graphs LLM reasoning"
+    weight: 1.3
+  - term: "privacy by design"
+    weight: 1.2
+  - term: "AI engineering"
+    weight: 1.0
 
 negative:
   authors: []
-  topics: []
+  topics:
+    - "cryptocurrency"
+    - "stock prediction"
   venues: []

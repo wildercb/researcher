@@ -107,7 +107,15 @@ async def run_calibration(
         _notify(on_progress, progress)
 
     progress.items_discovered = len(discovered)
-    progress.items_stored = len(discovered)  # in real impl, after DB insert
+
+    # Persist discovered items to DB
+    stored = await _persist_discovered_items(discovered)
+    progress.items_stored = stored
+
+    # Derive interest profile
+    from packages.seeds.interest import derive_interest_profile
+    derive_interest_profile(discovered)
+
     progress.status = "completed"
     _notify(on_progress, progress)
 
@@ -115,11 +123,70 @@ async def run_calibration(
         "calibration_complete",
         seeds=progress.seeds_processed,
         items=len(discovered),
+        stored=stored,
         errors=progress.errors,
         elapsed_s=round(progress.elapsed_seconds, 1),
     )
 
     return progress
+
+
+async def _persist_discovered_items(items: list[DiscoveredItem]) -> int:
+    """Store discovered items in the items table."""
+    from packages.core.config import get_settings
+    from packages.core.models import Item
+    from packages.core.storage import create_storage
+    from packages.pipeline.dedupe import dedupe_item
+    from packages.sources.base import NormalizedItem
+
+    settings = get_settings()
+    storage = create_storage(settings)
+    await storage.init()
+    stored = 0
+
+    try:
+        async with storage.session() as session:
+            for disc in items:
+                if not disc.title:
+                    continue
+                normalized = NormalizedItem(
+                    source=disc.source,
+                    source_id=disc.doi or disc.arxiv_id or disc.title[:100],
+                    kind="paper",
+                    title=disc.title,
+                    abstract=disc.abstract,
+                    authors=disc.authors,
+                    venue=disc.venue,
+                    url=disc.url,
+                    doi=disc.doi,
+                    arxiv_id=disc.arxiv_id,
+                    tags=disc.tags,
+                    raw=disc.raw,
+                )
+                existing, is_new = await dedupe_item(normalized, session)
+                if is_new:
+                    item = Item(
+                        source=normalized.source,
+                        source_id=normalized.source_id,
+                        kind=normalized.kind,
+                        title=normalized.title,
+                        abstract=normalized.abstract,
+                        authors=normalized.authors,
+                        venue=normalized.venue,
+                        url=normalized.url,
+                        doi=normalized.doi,
+                        arxiv_id=normalized.arxiv_id,
+                        tags=normalized.tags,
+                        raw=normalized.raw,
+                        enrichment_status="pending",
+                    )
+                    session.add(item)
+                    stored += 1
+    finally:
+        await storage.close()
+
+    logger.info("calibration_items_persisted", stored=stored)
+    return stored
 
 
 async def _expand_paper_seed(
