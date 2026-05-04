@@ -53,11 +53,13 @@ def seed() -> None:
 @click.argument("path", type=click.Path(exists=True))
 def seed_import(path: str) -> None:
     """Import seeds from a YAML file."""
-    with open(path) as f:
-        data = yaml.safe_load(f)
-    count = sum(len(v) for v in data.values() if isinstance(v, list))
-    click.echo(f"Loaded {count} seeds from {path}")
-    click.echo("Seed import will be fully wired in Phase 1.5")
+    from packages.seeds.loader import load_seeds
+
+    seeds = load_seeds(path)
+    click.echo(f"Loaded {len(seeds)} seeds from {path}")
+    for s in seeds:
+        neg = " [negative]" if s.is_negative else ""
+        click.echo(f"  [{s.seed_type.value}] {s.identifier}{neg}")
 
 
 @seed.command("export")
@@ -74,8 +76,20 @@ def seed_export() -> None:
 @click.argument("identifier")
 def seed_paper(identifier: str) -> None:
     """Add a paper seed (DOI, arXiv ID, or title)."""
-    click.echo(f"Adding paper seed: {identifier}")
-    click.echo("Paper seed addition will be fully wired in Phase 1.5")
+    from packages.core.types import SeedType
+    from packages.seeds.loader import SeedEntry, classify_identifier, load_seeds, save_seeds
+
+    seeds_path = Path("config/seeds.yaml")
+    seeds = load_seeds(seeds_path)
+    kind = classify_identifier(identifier)
+    label = f"{kind.upper()}:{identifier}" if kind != "title" else identifier
+    seeds.append(SeedEntry(
+        seed_type=SeedType.PAPER,
+        identifier=identifier,
+        label=label,
+    ))
+    save_seeds(seeds_path, seeds)
+    click.echo(f"Added paper seed: {identifier} ({kind})")
 
 
 @seed.command("author")
@@ -83,8 +97,20 @@ def seed_paper(identifier: str) -> None:
 @click.option("--orcid", help="ORCID identifier")
 def seed_author(name: str, orcid: str | None) -> None:
     """Add an author seed."""
-    click.echo(f"Adding author seed: {name}" + (f" (ORCID: {orcid})" if orcid else ""))
-    click.echo("Author seed addition will be fully wired in Phase 1.5")
+    from packages.core.types import SeedType
+    from packages.seeds.loader import SeedEntry, load_seeds, save_seeds
+
+    seeds_path = Path("config/seeds.yaml")
+    seeds = load_seeds(seeds_path)
+    meta = {"orcid": orcid} if orcid else {}
+    seeds.append(SeedEntry(
+        seed_type=SeedType.AUTHOR,
+        identifier=name,
+        label=name,
+        metadata=meta,
+    ))
+    save_seeds(seeds_path, seeds)
+    click.echo(f"Added author seed: {name}" + (f" (ORCID: {orcid})" if orcid else ""))
 
 
 @seed.command("venue")
@@ -92,8 +118,20 @@ def seed_author(name: str, orcid: str | None) -> None:
 @click.option("--rss", help="RSS feed URL")
 def seed_venue(name: str, rss: str | None) -> None:
     """Add a venue seed."""
-    click.echo(f"Adding venue seed: {name}")
-    click.echo("Venue seed addition will be fully wired in Phase 1.5")
+    from packages.core.types import SeedType
+    from packages.seeds.loader import SeedEntry, load_seeds, save_seeds
+
+    seeds_path = Path("config/seeds.yaml")
+    seeds = load_seeds(seeds_path)
+    meta = {"rss": rss} if rss else {}
+    seeds.append(SeedEntry(
+        seed_type=SeedType.VENUE,
+        identifier=name,
+        label=name,
+        metadata=meta,
+    ))
+    save_seeds(seeds_path, seeds)
+    click.echo(f"Added venue seed: {name}")
 
 
 @seed.command("keyword")
@@ -101,8 +139,19 @@ def seed_venue(name: str, rss: str | None) -> None:
 @click.option("--weight", default=1.0, type=float, help="Keyword weight")
 def seed_keyword(term: str, weight: float) -> None:
     """Add a keyword seed."""
-    click.echo(f"Adding keyword seed: {term} (weight={weight})")
-    click.echo("Keyword seed addition will be fully wired in Phase 1.5")
+    from packages.core.types import SeedType
+    from packages.seeds.loader import SeedEntry, load_seeds, save_seeds
+
+    seeds_path = Path("config/seeds.yaml")
+    seeds = load_seeds(seeds_path)
+    seeds.append(SeedEntry(
+        seed_type=SeedType.KEYWORD,
+        identifier=term,
+        label=term,
+        weight=weight,
+    ))
+    save_seeds(seeds_path, seeds)
+    click.echo(f"Added keyword seed: {term} (weight={weight})")
 
 
 # --- Calibrate ---
@@ -115,16 +164,51 @@ def seed_keyword(term: str, weight: float) -> None:
 @click.option("--dry-run", is_flag=True, help="Show what would be fetched")
 def calibrate(depth: int, max_items: int, show_status: bool, dry_run: bool) -> None:
     """Run the calibration crawl from seeds."""
+    import asyncio
+    import os
+
+    from packages.seeds.crawl import run_calibration
+
+    seeds_path = Path("config/seeds.yaml")
+    s2_key = os.environ.get("S2_API_KEY") or os.environ.get("SEMANTIC_SCHOLAR_API_KEY")
+
     if show_status:
-        click.echo("Calibration status: not yet started")
-        click.echo("Calibration will be fully wired in Phase 1.5")
+        click.echo("Calibration status: check config/interest.yaml for last run results.")
         return
+
     if dry_run:
-        click.echo(f"Would crawl with depth={depth}, max_items={max_items}")
-        click.echo("Calibration will be fully wired in Phase 1.5")
+        from packages.seeds.loader import load_seeds
+
+        seeds = load_seeds(seeds_path)
+        click.echo(f"Seeds: {len(seeds)}")
+        for s in seeds:
+            click.echo(f"  [{s.seed_type.value}] {s.identifier}")
+        click.echo(f"\nWould crawl with depth={depth}, max_items={max_items}")
         return
+
+    def on_progress(p):
+        click.echo(
+            f"\r  Seeds: {p.seeds_processed}/{p.seeds_total} | "
+            f"Items: {p.items_discovered} | "
+            f"Errors: {p.errors} | "
+            f"Elapsed: {p.elapsed_seconds:.0f}s",
+            nl=False,
+        )
+
     click.echo(f"Starting calibration crawl (depth={depth}, max_items={max_items})...")
-    click.echo("Calibration will be fully wired in Phase 1.5")
+    progress = asyncio.run(run_calibration(
+        seeds_path=seeds_path,
+        depth=depth,
+        max_items=max_items,
+        s2_api_key=s2_key,
+        on_progress=on_progress,
+        dry_run=False,
+    ))
+    click.echo("\n\nCalibration complete:")
+    click.echo(f"  Seeds processed: {progress.seeds_processed}/{progress.seeds_total}")
+    click.echo(f"  Items discovered: {progress.items_discovered}")
+    click.echo(f"  Errors: {progress.errors}")
+    click.echo(f"  Duration: {progress.elapsed_seconds:.1f}s")
 
 
 # --- Sources ---
