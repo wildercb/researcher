@@ -51,8 +51,7 @@ class OpenAlexSource:
 
     async def fetch(self, since: datetime | None = None) -> AsyncIterator[SourceRawItem]:
         """Fetch works from OpenAlex with cursor-based pagination."""
-        user_agent = f"Atlas/0.1.0 (mailto:{self.mailto})"
-        async with create_client(headers={"User-Agent": user_agent}) as client:
+        async with create_client() as client:
             cursor = "*"
             total_fetched = 0
 

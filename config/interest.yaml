@@ -5,142 +5,142 @@
 anchor_embedding: null
 tag_affinities:
   Computer Science: 1.0
-  Engineering: 0.0806
-  Mathematics: 0.0161
-  Business: 0.0161
-  Sociology: 0.0161
+  Engineering: 0.0549
+  Mathematics: 0.011
+  Business: 0.011
+  Sociology: 0.011
 author_affinities:
   Sepideh Ghanavati: 1.0
-  S. Ghanavati: 1.0
-  Wilder Baldwin: 0.8
-  Rui Wang: 0.6
-  Sai Teja Peddinti: 0.6
-  N. Sadeh: 0.6
-  Alec Radford: 0.6
-  Jeff Wu: 0.6
-  Guntur Budi Herwanto: 0.6
-  Manuel Woersdoerfer: 0.4
-  Shashank Chintakuntla: 0.4
-  Shreyah Parajuli: 0.4
-  Ali Pourghasemi: 0.4
-  Ryan Shanz: 0.4
-  Tong Xiao: 0.4
-  Beichen Zhang: 0.4
-  Le Yu: 0.4
-  Aston Zhang: 0.4
-  Keqian Li: 0.4
-  R. Raileanu: 0.4
-  V. Ivanov: 0.4
-  Pragyan K C: 0.4
-  Rocky Slavin: 0.4
-  Travis D. Breaux: 0.4
-  M. Hosseini: 0.4
-  "David Rodr\xEDguez Torrado": 0.4
-  Thomas B. Norton: 0.4
-  Sara Haghighi: 0.4
-  Vijayanta Jain: 0.4
-  Collin McMillan: 0.4
-  "J. D. \xC1lamo": 0.4
-  S. Agarwal: 0.4
-  Christopher Berner: 0.4
-  Mark Chen: 0.4
-  Benjamin Chess: 0.4
-  Scott Gray: 0.4
-  Gretchen Krueger: 0.4
-  Ma-teusz Litwin: 0.4
-  Arvind Neelakantan: 0.4
-  G. Sastry: 0.4
-  Pranav Shyam: 0.4
-  Eric Sigler: 0.4
-  I. Sutskever: 0.4
-  Jason Wei: 0.4
-  Clemens Winter: 0.4
-  G. Quirchmayr: 0.4
-  A. Tjoa: 0.4
-  Tom B. Brown: 0.4
-  Daniel M. Ziegler: 0.4
-  Dario Amodei: 0.4
-  Sebastian Zimmeck: 0.4
-  J. Reidenberg: 0.4
-  N. Russell: 0.4
-  Chenyu Wang: 0.2
-  Zhou Yang: 0.2
-  Yunbo Lyu: 0.2
-  Zewei Li: 0.2
-  Daniela E. Damian: 0.2
-  David Lo: 0.2
-  Tin Nguyen: 0.2
-  Logan Bolton: 0.2
-  Mohammad Reza Taesiri: 0.2
-  A. Nguyen: 0.2
-  Jingbo Zhu: 0.2
-  Qwen An Yang: 0.2
-  Baosong Yang: 0.2
-  Binyuan Hui: 0.2
-  Bo Zheng: 0.2
-  Bowen Yu: 0.2
-  Chengyuan Li: 0.2
-  Dayiheng Liu: 0.2
-  Fei Huang: 0.2
-  Guanting Dong: 0.2
-  Haoran Wei: 0.2
-  Huan Lin: 0.2
-  Jian Yang: 0.2
-  Jianhong Tu: 0.2
-  Jianwei Zhang: 0.2
-  Jianxin Yang: 0.2
-  Jiaxin Yang: 0.2
-  Jingren Zhou: 0.2
-  Junyang Lin: 0.2
-  K. Dang: 0.2
-  Keming Lu: 0.2
-  Keqin Bao: 0.2
-  Kexin Yang: 0.2
-  Mei Li: 0.2
-  Mingfeng Xue: 0.2
-  Pei Zhang: 0.2
-  Qin Zhu: 0.2
-  Rui Men: 0.2
-  Runji Lin: 0.2
-  Tianhao Li: 0.2
-  Tingyu Xia: 0.2
-  Xingzhang Ren: 0.2
-  Xuancheng Ren: 0.2
-  Yang Fan: 0.2
-  Yang Su: 0.2
-  Yi-Chao Zhang: 0.2
-  Yunyang Wan: 0.2
+  Wilder Baldwin: 0.8571
+  S. Ghanavati: 0.7143
+  Jianfeng Chi: 0.4286
+  Thomas B. Norton: 0.4286
+  N. Sadeh: 0.4286
+  Rui Wang: 0.4286
+  Sai Teja Peddinti: 0.4286
+  Alec Radford: 0.4286
+  Jeff Wu: 0.4286
+  Guntur Budi Herwanto: 0.4286
+  Wasi Uddin Ahmad: 0.2857
+  Yuan Tian: 0.2857
+  Kai-Wei Chang: 0.2857
+  Shomir Wilson: 0.2857
+  Sergey Edunov: 0.2857
+  Sebastian Zimmeck: 0.2857
+  N. Russell: 0.2857
+  J. Reidenberg: 0.2857
+  Manuel Woersdoerfer: 0.2857
+  Shashank Chintakuntla: 0.2857
+  Shreyah Parajuli: 0.2857
+  Ali Pourghasemi: 0.2857
+  Ryan Shanz: 0.2857
+  Tong Xiao: 0.2857
+  Beichen Zhang: 0.2857
+  Le Yu: 0.2857
+  Aston Zhang: 0.2857
+  Keqian Li: 0.2857
+  R. Raileanu: 0.2857
+  V. Ivanov: 0.2857
+  Pragyan K C: 0.2857
+  Rocky Slavin: 0.2857
+  Travis D. Breaux: 0.2857
+  M. Hosseini: 0.2857
+  "David Rodr\xEDguez Torrado": 0.2857
+  Sara Haghighi: 0.2857
+  Vijayanta Jain: 0.2857
+  Collin McMillan: 0.2857
+  "J. D. \xC1lamo": 0.2857
+  S. Agarwal: 0.2857
+  Christopher Berner: 0.2857
+  Mark Chen: 0.2857
+  Benjamin Chess: 0.2857
+  Scott Gray: 0.2857
+  Gretchen Krueger: 0.2857
+  Ma-teusz Litwin: 0.2857
+  Arvind Neelakantan: 0.2857
+  G. Sastry: 0.2857
+  Pranav Shyam: 0.2857
+  Eric Sigler: 0.2857
+  I. Sutskever: 0.2857
+  Jason Wei: 0.2857
+  Clemens Winter: 0.2857
+  G. Quirchmayr: 0.2857
+  A. Tjoa: 0.2857
+  Tom B. Brown: 0.2857
+  Daniel M. Ziegler: 0.2857
+  Dario Amodei: 0.2857
+  Jiseong Chung: 0.1429
+  Ronny Ko: 0.1429
+  W. Yoo: 0.1429
+  Makoto Onizuka: 0.1429
+  Sungmok Kim: 0.1429
+  Taewan Kim: 0.1429
+  Wonyong Shin: 0.1429
+  Sydney Anuyah: 0.1429
+  Mehedi Mahmud Kaushik: 0.1429
+  Krishna Dwarampudi: 0.1429
+  R. Shiradkar: 0.1429
+  A. Durresi: 0.1429
+  Sunandan Chakraborty: 0.1429
+  Bhavik Agarwal: 0.1429
+  Hemant Sunil Jomraj: 0.1429
+  Simone Kaplunov: 0.1429
+  Jack Krolick: 0.1429
+  Viktoria Rojkova: 0.1429
+  Chuangtao Ma: 0.1429
+  Yongrui Chen: 0.1429
+  Tianxing Wu: 0.1429
+  Arijit Khan: 0.1429
+  Haofen Wang: 0.1429
+  "\xC1d\xE1m Kov\xE1ri": 0.1429
+  Yasin Ghafourian: 0.1429
+  "Csaba Heged\xFCs": 0.1429
+  Belal Abu-Naim: 0.1429
+  Kitti Mezei: 0.1429
+  Pal Varga: 0.1429
+  Markus Tauber: 0.1429
+  Elan Markowitz: 0.1429
+  Krupa Galiya: 0.1429
+  G. V. Steeg: 0.1429
+  A. Galstyan: 0.1429
+  Belinda Mo: 0.1429
+  Kyssen Yu: 0.1429
+  Joshua Kazdan: 0.1429
+  Proud Mpala: 0.1429
+  Lisa Yu: 0.1429
+  Chris Cundy: 0.1429
+  Charilaos I. Kanatsoulis: 0.1429
 venue_affinities:
   Requirements Engineering: 1.0
-  ICLR: 0.604
-  arXiv.org: 0.0792
+  ICLR: 0.2178
+  arXiv.org: 0.1584
+  Conference on Empirical Methods in Natural Language Processing: 0.0891
+  Annual Meeting of the Association for Computational Linguistics: 0.0693
   IEEE International Requirements Engineering Conference: 0.0693
-  Annual Meeting of the Association for Computational Linguistics: 0.0396
   Neural Information Processing Systems: 0.0396
+  International Conference on Learning Representations: 0.0198
+  ACM Computing Surveys: 0.0198
   International Conference on Human Factors in Computing Systems: 0.0198
-  Conference on Empirical Methods in Natural Language Processing: 0.0198
   Information and Software Technology: 0.0198
+  IEEE/IFIP Network Operations and Management Symposium: 0.0099
+  Expert systems with applications: 0.0099
+  Knowledge-Based Systems: 0.0099
+  Applied Sciences: 0.0099
+  Transactions of the Association for Computational Linguistics: 0.0099
+  Findings: 0.0099
+  Computer Law &amp; Security Review: 0.0099
+  International Conference on Semantic Systems: 0.0099
+  Proceedings of the 2018 Conference on Empirical Methods in Natural Language Processing (EMNLP): 0.0099
+  Advances in Neural Information Processing Systems (NeurIPS) , volume 36: 0.0099
+  Proceedings of the 33rd ACM International Conference on Information and Knowledge Management (CIKM): 0.0099
+  genai.: 0.0099
+  on Empirical Methods: 0.0099
+  International Conference on Learning Representations (ICLR): 0.0099
+  Proceedings of the 32nd USENIX Security Symposium: 0.0099
+  artificialintelligenceact.eu: 0.0099
+  World Wide Web: 0.0099
   2024 IEEE 32nd International Requirements Engineering Conference Workshops (REW): 0.0099
   Computing: 0.0099
-  International Conference on Computational Linguistics: 0.0099
-  SOUPS @ USENIX Security Symposium: 0.0099
-  International Conference on Agile Software Development: 0.0099
-  IEEE International Conference on Software Analysis, Evolution, and Reengineering: 0.0099
-  IEEE International Conference on Acoustics, Speech, and Signal Processing: 0.0099
-  ACM Computing Surveys: 0.0099
-  EUROMICRO Conference on Software Engineering and Advanced Applications: 0.0099
-  USENIX Security Symposium: 0.0099
-  European Symposium on Security and Privacy: 0.0099
-  2023 IEEE European Symposium on Security and Privacy Workshops (EuroS&PW): 0.0099
-  Wireless Network Security: 0.0099
-  International Joint Conference on the Analysis of Images, Social Networks and Texts: 0.0099
-  Quality of Information and Communications Technology: 0.0099
-  Proceedings on Privacy Enhancing Technologies: 0.0099
-  IEEE Transactions on Software Engineering: 0.0099
-  New Security Paradigms Workshop: 0.0099
-  Empirical Software Engineering: 0.0099
-  IEEE Security and Privacy: 0.0099
-  MiSE 2014: 0.0099
 relevance_weights:
   anchor_distance: 0.35
   tag_overlap: 0.2
@@ -153,5 +153,5 @@ drift:
 calibration:
   items_count: 300
   unique_tags: 5
-  unique_authors: 1112
-  unique_venues: 35
+  unique_authors: 1279
+  unique_venues: 53

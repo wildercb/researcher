@@ -86,14 +86,22 @@ class OpenReviewSource:
         abstract = get_val("abstract")
         venue = get_val("venue") or get_val("venueid")
 
-        # Authors
+        # Authors — may be strings or dicts like {"fullname": "...", "username": "..."}
         authors_val = content.get("authors")
         if isinstance(authors_val, dict):
-            authors = authors_val.get("value", [])
+            authors_raw = authors_val.get("value", [])
         elif isinstance(authors_val, list):
-            authors = authors_val
+            authors_raw = authors_val
         else:
-            authors = []
+            authors_raw = []
+
+        authors = []
+        for a in authors_raw if isinstance(authors_raw, list) else []:
+            if isinstance(a, str):
+                authors.append(a)
+            elif isinstance(a, dict):
+                authors.append(a.get("fullname") or a.get("name") or a.get("username", ""))
+            # skip anything else
 
         # Published date
         cdate = note.get("tcdate", note.get("cdate", 0))

@@ -78,6 +78,9 @@ async def run_calibration(
     progress = CrawlProgress(seeds_total=len(seeds), status="running")
     _notify(on_progress, progress)
 
+    # Persist seed entries to DB
+    await _persist_seeds(seeds)
+
     discovered: list[DiscoveredItem] = []
     seen_ids: set[str] = set()  # dedupe by DOI/arXiv/title
 
@@ -401,6 +404,50 @@ def _add_if_new(item: DiscoveredItem, seen: set[str]) -> bool:
     for key in keys:
         seen.add(key)
     return True
+
+
+async def _persist_seeds(seeds: list[SeedEntry]) -> int:
+    """Store seed entries in the seeds table."""
+    from packages.core.config import get_settings
+    from packages.core.models import Seed
+    from packages.core.storage import create_storage
+
+    from sqlalchemy import select
+
+    settings = get_settings()
+    storage = create_storage(settings)
+    await storage.init()
+    stored = 0
+
+    try:
+        async with storage.session() as session:
+            for entry in seeds:
+                # Check if already exists
+                existing = await session.execute(
+                    select(Seed).where(
+                        Seed.seed_type == entry.seed_type.value,
+                        Seed.identifier == entry.identifier,
+                    )
+                )
+                if existing.scalar_one_or_none():
+                    continue
+
+                seed = Seed(
+                    seed_type=entry.seed_type.value,
+                    identifier=entry.identifier,
+                    label=entry.label,
+                    weight=entry.weight,
+                    is_negative=entry.is_negative,
+                    metadata_=entry.metadata,
+                )
+                session.add(seed)
+                stored += 1
+
+        logger.info("seeds_persisted", stored=stored, total=len(seeds))
+    finally:
+        await storage.close()
+
+    return stored
 
 
 def _notify(callback: Callable[[CrawlProgress], None] | None, progress: CrawlProgress) -> None:

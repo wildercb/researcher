@@ -79,7 +79,7 @@ async def resilient_get(
     url: str,
     rate_limiter: RateLimiter | None = None,
     circuit_breaker: CircuitBreaker | None = None,
-    max_retries: int = 3,
+    max_retries: int = 5,
     backoff_base: float = 1.0,
     **kwargs: Any,
 ) -> httpx.Response:
