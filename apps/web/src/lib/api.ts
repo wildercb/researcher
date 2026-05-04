@@ -16,26 +16,109 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export async function fetchHealth(): Promise<{ status: string }> {
-  return request<{ status: string }>("/health");
+// Health
+export async function fetchHealth(): Promise<{ status: string; mode: string }> {
+  return request("/api/health");
 }
 
-export async function fetchItems(
-  endpoint: string,
-  params?: Record<string, string>
-): Promise<unknown[]> {
-  const query = params
-    ? "?" + new URLSearchParams(params).toString()
-    : "";
-  return request<unknown[]>(`/${endpoint}${query}`);
+// Items
+export interface ItemData {
+  id: number;
+  title: string;
+  abstract: string | null;
+  source: string;
+  kind: string;
+  authors: string[];
+  venue: string | null;
+  published_at: string | null;
+  url: string;
+  pdf_url: string | null;
+  doi: string | null;
+  arxiv_id: string | null;
+  tags: string[];
+  relevance_score: number | null;
+  summary: string | null;
+  enrichment_status: string;
 }
 
-export async function sendChat(message: string): Promise<{
-  reply: string;
-  sources?: string[];
-}> {
-  return request("/chat", {
+export async function fetchItems(params?: {
+  q?: string;
+  source?: string;
+  kind?: string;
+  sort?: string;
+  limit?: number;
+}): Promise<{ items: ItemData[]; total: number }> {
+  const searchParams = new URLSearchParams();
+  if (params?.q) searchParams.set("q", params.q);
+  if (params?.source) searchParams.set("source", params.source);
+  if (params?.kind) searchParams.set("kind", params.kind);
+  if (params?.sort) searchParams.set("sort", params.sort);
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  const qs = searchParams.toString();
+  return request(`/api/items${qs ? `?${qs}` : ""}`);
+}
+
+export async function sendFeedback(itemId: number, signal: string): Promise<void> {
+  await request(`/api/items/${itemId}/feedback`, {
     method: "POST",
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ signal }),
   });
+}
+
+// Seeds
+export interface SeedData {
+  id: number;
+  type: string;
+  identifier: string;
+  label: string;
+  weight: number;
+  is_negative: boolean;
+}
+
+export async function fetchSeeds(): Promise<{ seeds: SeedData[] }> {
+  return request("/api/seeds");
+}
+
+export async function addSeed(seed: { type: string; identifier: string; weight?: number }): Promise<{ id: number }> {
+  return request("/api/seeds", { method: "POST", body: JSON.stringify(seed) });
+}
+
+export async function deleteSeed(id: number): Promise<void> {
+  await request(`/api/seeds/${id}`, { method: "DELETE" });
+}
+
+// Chat
+export async function sendChat(messages: { content: string; role: string }[]): Promise<{
+  response: string;
+  agent: string | null;
+  intent: string;
+  model: string | null;
+  cost_usd: number;
+}> {
+  return request("/api/chat", { method: "POST", body: JSON.stringify({ messages }) });
+}
+
+// Trends
+export interface TrendData {
+  topic: string;
+  count: number;
+  recent_count: number;
+  velocity: number;
+}
+
+export async function fetchTrends(): Promise<{ trends: TrendData[] }> {
+  return request("/api/trends");
+}
+
+// Calibrate
+export async function triggerCalibrate(depth?: number, maxItems?: number): Promise<{ status: string }> {
+  return request("/api/calibrate", {
+    method: "POST",
+    body: JSON.stringify({ depth: depth || 1, max_items: maxItems || 500 }),
+  });
+}
+
+// Pipeline
+export async function triggerPipeline(source?: string): Promise<{ status: string }> {
+  return request("/api/pipeline/run", { method: "POST", body: JSON.stringify({ source }) });
 }

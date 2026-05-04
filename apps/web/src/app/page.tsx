@@ -2,17 +2,21 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
+import { sendChat } from "@/lib/api";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  agent?: string | null;
+  cost?: number;
 }
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,27 +27,45 @@ export default function ChatPage() {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    setError(null);
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: input.trim(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
-    // Placeholder for streaming response
-    const assistantMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: "assistant",
-      content: "This is a placeholder response. Connect the API to enable real responses.",
-    };
+    try {
+      const chatMessages = updatedMessages.map((m) => ({
+        content: m.content,
+        role: m.role,
+      }));
 
-    setTimeout(() => {
+      const result = await sendChat(chatMessages);
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: result.response,
+        agent: result.agent,
+        cost: result.cost_usd,
+      };
+
       setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "An unexpected error occurred";
+      setError(
+        `Failed to get response: ${msg}. Please check that the API server is running and your API key is configured.`
+      );
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -72,14 +94,23 @@ export default function ChatPage() {
             key={msg.id}
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
-            <div
-              className={`max-w-[70%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-[var(--accent)] text-white"
-                  : "bg-[var(--card-bg)] border border-[var(--card-border)]"
-              }`}
-            >
-              {msg.content}
+            <div className="max-w-[70%]">
+              <div
+                className={`rounded-xl px-4 py-3 text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "bg-[var(--accent)] text-white"
+                    : "bg-[var(--card-bg)] border border-[var(--card-border)]"
+                }`}
+              >
+                {msg.content}
+              </div>
+              {msg.role === "assistant" && (msg.agent || msg.cost !== undefined) && (
+                <p className="text-[10px] text-[var(--muted)] mt-1 px-1">
+                  {msg.agent && <span>{msg.agent}</span>}
+                  {msg.agent && msg.cost !== undefined && <span> &middot; </span>}
+                  {msg.cost !== undefined && <span>${msg.cost.toFixed(4)}</span>}
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -92,6 +123,14 @@ export default function ChatPage() {
                 <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>.</span>
                 <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>.</span>
               </span>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex justify-start">
+            <div className="max-w-[70%] rounded-xl px-4 py-3 text-sm leading-relaxed bg-red-900/30 border border-red-800/50 text-red-300">
+              {error}
             </div>
           </div>
         )}

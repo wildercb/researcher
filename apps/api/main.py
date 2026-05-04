@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from apps.api.deps import get_scheduler_instance, get_storage_instance
-from apps.api.routes import chat, health, items, seeds, sources
+from apps.api.routes import calibrate, chat, health, items, pipeline, seeds, sources, trends
 from packages.core.config import get_settings
 
 if TYPE_CHECKING:
@@ -54,6 +54,9 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(seeds.router)
     app.include_router(sources.router)
+    app.include_router(trends.router)
+    app.include_router(pipeline.router)
+    app.include_router(calibrate.router)
 
     # Serve static frontend in production
     static_dir = Path(__file__).parent.parent / "web" / "out"

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   MessageSquare,
+  FileText,
   Newspaper,
   TrendingUp,
   Sprout,
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Chat", icon: MessageSquare },
+  { href: "/feed", label: "Feed", icon: FileText },
   { href: "/briefings", label: "Briefings", icon: Newspaper },
   { href: "/trends", label: "Trends", icon: TrendingUp },
   { href: "/seeds", label: "Seeds", icon: Sprout },
