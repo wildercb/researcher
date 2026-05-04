@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 import click
 import yaml
+
+
+def _load_sources_config() -> dict:
+    path = Path("config/sources.yaml")
+    if path.exists():
+        with open(path) as f:
+            return yaml.safe_load(f) or {}
+    return {}
 
 
 @click.group()
@@ -130,32 +139,85 @@ def sources() -> None:
 @sources.command("list")
 def sources_list() -> None:
     """List registered source plugins."""
+    import packages.sources  # noqa: F401 — triggers auto-registration
     from packages.sources.registry import list_sources
 
     registered = list_sources()
     if not registered:
-        click.echo("No sources registered yet. Sources will be added in Phase 1.")
+        click.echo("No sources registered.")
     else:
-        for name in registered:
-            click.echo(f"  - {name}")
+        config = _load_sources_config()
+        for name in sorted(registered):
+            src_cfg = config.get(name, {})
+            enabled = src_cfg.get("enabled", False)
+            status = "enabled" if enabled else "disabled"
+            click.echo(f"  {name:20s} [{status}]")
 
 
 @sources.command("test")
 @click.argument("name")
-def sources_test(name: str) -> None:
-    """Test a source plugin."""
+@click.option("--limit", default=5, type=int, help="Max items to fetch")
+def sources_test(name: str, limit: int) -> None:
+    """Test a source plugin by fetching and parsing a few items."""
+    import asyncio
+
+    import packages.sources  # noqa: F401
+    from packages.sources.registry import get_source
+
+    config = _load_sources_config()
+    src_cls = get_source(name)
+    src = src_cls(config.get(name, {}))
     click.echo(f"Testing source: {name}")
-    click.echo("Source testing will be fully wired in Phase 1")
+
+    async def _test():
+        count = 0
+        async for raw in src.fetch():
+            item = src.parse(raw)
+            click.echo(f"  [{item.kind}] {item.title[:80]}")
+            if item.authors:
+                click.echo(f"         Authors: {', '.join(item.authors[:3])}")
+            count += 1
+            if count >= limit:
+                break
+        click.echo(f"\nFetched and parsed {count} items from {name}.")
+
+    asyncio.run(_test())
 
 
 @sources.command("fetch")
 @click.argument("name")
 @click.option("--since", help="Fetch items since date (YYYY-MM-DD)")
+@click.option("--limit", default=100, type=int, help="Max items to fetch")
 @click.option("--dry-run", is_flag=True, help="Show what would be fetched")
-def sources_fetch(name: str, since: str | None, dry_run: bool) -> None:
+def sources_fetch(name: str, since: str | None, limit: int, dry_run: bool) -> None:
     """Fetch items from a source."""
-    click.echo(f"Fetching from source: {name}" + (f" since {since}" if since else ""))
-    click.echo("Source fetching will be fully wired in Phase 1")
+    import asyncio
+
+    import packages.sources  # noqa: F401
+    from packages.sources.registry import get_source
+
+    config = _load_sources_config()
+    src_cls = get_source(name)
+    src = src_cls(config.get(name, {}))
+
+    since_dt = None
+    if since:
+        since_dt = datetime.strptime(since, "%Y-%m-%d")
+
+    click.echo(f"Fetching from {name}" + (f" since {since}" if since else ""))
+
+    async def _fetch():
+        count = 0
+        async for raw in src.fetch(since=since_dt):
+            item = src.parse(raw)
+            if dry_run:
+                click.echo(f"  [{item.kind}] {item.title[:80]}")
+            count += 1
+            if count >= limit:
+                break
+        click.echo(f"\n{'Would fetch' if dry_run else 'Fetched'} {count} items from {name}.")
+
+    asyncio.run(_fetch())
 
 
 # --- Pipeline ---
