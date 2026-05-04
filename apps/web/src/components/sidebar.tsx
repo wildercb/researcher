@@ -11,6 +11,7 @@ import {
   Sprout,
   BookOpen,
   BarChart3,
+  Settings,
   Menu,
   X,
 } from "lucide-react";
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/seeds", label: "Seeds", icon: Sprout },
   { href: "/reading-list", label: "Reading List", icon: BookOpen },
   { href: "/eval", label: "Eval", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar() {

@@ -1,58 +1,45 @@
 # Atlas LLM model configuration
-# All LLM calls go through LiteLLM. Change models here, not in code.
-#
-# Current: Ollama local (granite4:micro) — no API key needed
-# To use Anthropic: set ANTHROPIC_API_KEY and change models to anthropic/claude-*
-# To use OpenAI: set OPENAI_API_KEY and change models to openai/gpt-*
+# Updated via Settings UI
 
 default:
-  model: "ollama/granite4:micro"
+  model: ollama/granite4:micro
   temperature: 0.3
   max_tokens: 4096
-
 agents:
   relevance_scorer:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.1
   classifier:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.0
   summarizer:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.3
   briefing_writer:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.5
   ideation_agent:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.7
   fit_agent:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.3
   trend_detector:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.1
   controversy_watcher:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.2
   seed_scout:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.3
   general:
-    model: "ollama/granite4:micro"
+    model: ollama/granite4:micro
     temperature: 0.3
-
-# To switch to Anthropic Claude:
-#   export ANTHROPIC_API_KEY=sk-ant-...
-#   Change all models to: anthropic/claude-haiku-4-5-20251001 (fast/cheap)
-#   Or: anthropic/claude-sonnet-4-20250514 (smarter)
-
 embedding:
-  model: "ollama/nomic-embed-text"
+  model: ollama/nomic-embed-text
   dimensions: 768
-
-daily_cost_cap_usd: 5.00
-
+daily_cost_cap_usd: 5.0
 fallback:
   enabled: true
-  model: "ollama/granite4:micro"
+  model: ollama/granite4:micro

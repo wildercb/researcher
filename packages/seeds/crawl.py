@@ -408,11 +408,11 @@ def _add_if_new(item: DiscoveredItem, seen: set[str]) -> bool:
 
 async def _persist_seeds(seeds: list[SeedEntry]) -> int:
     """Store seed entries in the seeds table."""
+    from sqlalchemy import select
+
     from packages.core.config import get_settings
     from packages.core.models import Seed
     from packages.core.storage import create_storage
-
-    from sqlalchemy import select
 
     settings = get_settings()
     storage = create_storage(settings)

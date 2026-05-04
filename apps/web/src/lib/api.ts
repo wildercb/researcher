@@ -122,3 +122,29 @@ export async function triggerCalibrate(depth?: number, maxItems?: number): Promi
 export async function triggerPipeline(source?: string): Promise<{ status: string }> {
   return request("/api/pipeline/run", { method: "POST", body: JSON.stringify({ source }) });
 }
+
+// Settings
+export interface ProviderInfo {
+  label: string;
+  description: string;
+  requires_key: boolean;
+  key_env: string | null;
+  models?: string[];
+}
+
+export interface SettingsData {
+  current_provider: string;
+  current_model: string;
+  providers: Record<string, ProviderInfo>;
+}
+
+export async function fetchSettings(): Promise<SettingsData> {
+  return request("/api/settings/");
+}
+
+export async function updateProvider(provider: string, model?: string): Promise<{ status: string; model: string }> {
+  return request("/api/settings/provider", {
+    method: "POST",
+    body: JSON.stringify({ provider, model }),
+  });
+}
