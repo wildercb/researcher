@@ -87,3 +87,31 @@ async def item_feedback(
     event = FeedbackEvent(item_id=item_id, signal=req.signal)
     session.add(event)
     return {"status": "recorded", "signal": req.signal}
+
+
+class EnrichRequest(BaseModel):
+    summary: str | None = None
+    relevance_score: float | None = None
+    relevance_reason: str | None = None
+    enrichment_status: str = "enriched"
+
+
+@router.patch("/{item_id}")
+async def patch_item(
+    item_id: int,
+    req: EnrichRequest,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Update item enrichment fields (used by Claude Code agent)."""
+    result = await session.execute(select(Item).where(Item.id == item_id))
+    item = result.scalar_one_or_none()
+    if not item:
+        return {"error": "not found"}
+    if req.summary is not None:
+        item.summary = req.summary
+    if req.relevance_score is not None:
+        item.relevance_score = req.relevance_score
+    if req.relevance_reason is not None:
+        item.relevance_reason = req.relevance_reason
+    item.enrichment_status = req.enrichment_status
+    return {"status": "updated", "id": item_id}

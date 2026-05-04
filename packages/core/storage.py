@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Protocol
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -36,11 +37,17 @@ class SQLiteStorage:
             settings.effective_database_url,
             echo=settings.debug,
             connect_args={"check_same_thread": False},
+            pool_size=1,
+            max_overflow=0,
         )
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
 
     async def init(self) -> None:
         self._settings.data_dir.mkdir(parents=True, exist_ok=True)
+        # Enable WAL mode for better concurrent reads during writes
+        async with self.engine.begin() as conn:
+            await conn.execute(text("PRAGMA journal_mode=WAL"))
+            await conn.execute(text("PRAGMA busy_timeout=5000"))
 
     async def close(self) -> None:
         await self.engine.dispose()
