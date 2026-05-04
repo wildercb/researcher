@@ -11,6 +11,7 @@ import {
   Sprout,
   BookOpen,
   BarChart3,
+  Radio,
   Settings,
   Menu,
   X,
@@ -23,8 +24,8 @@ const navItems = [
   { href: "/briefings", label: "Briefings", icon: Newspaper },
   { href: "/trends", label: "Trends", icon: TrendingUp },
   { href: "/seeds", label: "Seeds", icon: Sprout },
+  { href: "/sources", label: "Sources", icon: Radio },
   { href: "/reading-list", label: "Reading List", icon: BookOpen },
-  { href: "/eval", label: "Eval", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

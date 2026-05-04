@@ -1,53 +1,101 @@
-# Atlas source configuration — Wilder Baldwin's research feeds
-
 arxiv:
   enabled: true
-  categories: [cs.SE, cs.AI, cs.CL, cs.LG, cs.CR]
-  cadence: "0 */6 * * *"
-
+  categories:
+  - cs.SE
+  - cs.AI
+  - cs.CL
+  - cs.LG
+  - cs.CR
+  cadence: 0 */6 * * *
 openalex:
   enabled: true
-  mailto: "atlas@localhost"
-  cadence: "0 */12 * * *"
-
+  mailto: atlas@localhost
+  cadence: 0 */12 * * *
 semantic_scholar:
   enabled: true
   queries:
-    - "privacy requirements engineering LLM"
-    - "knowledge graph policy compliance"
-    - "AI ethics software development"
-    - "privacy by design software"
-    - "LLM code generation requirements"
-  cadence: "0 */12 * * *"
-
+  - privacy requirements engineering LLM
+  - knowledge graph policy compliance
+  - AI ethics software development
+  - privacy by design software
+  - LLM code generation requirements
+  - requirements engineering conference 2025 2026
+  - software engineering AI ethics
+  - responsible AI governance
+  cadence: 0 */12 * * *
 openreview:
   enabled: true
   venues:
-    - "NeurIPS 2025"
-    - "ICLR 2025"
-    - "COLM 2025"
-  cadence: "0 0 * * *"
-
+  - NeurIPS 2025
+  - NeurIPS 2026
+  - ICLR 2025
+  - ICLR 2026
+  - COLM 2025
+  - COLM 2026
+  - ICSE 2025
+  - ICSE 2026
+  - FSE 2025
+  - FSE 2026
+  cadence: 0 0 * * *
 rss:
   enabled: true
-  cadence: "0 */6 * * *"
+  cadence: 0 */6 * * *
   feeds:
-    - name: "Google AI Blog"
-      url: "https://blog.google/technology/ai/rss/"
-    - name: "OpenAI Blog"
-      url: "https://openai.com/blog/rss.xml"
-
+  - name: Google AI Blog
+    url: https://blog.google/technology/ai/rss/
+  - name: OpenAI Blog
+    url: https://openai.com/blog/rss.xml
+  - name: Anthropic Research
+    url: https://www.anthropic.com/research/rss.xml
+  - name: Meta AI Blog
+    url: https://ai.meta.com/blog/rss/
+  - name: DeepMind Blog
+    url: https://deepmind.google/blog/rss.xml
+  - name: Microsoft Research
+    url: https://www.microsoft.com/en-us/research/feed/
+  - name: IEEE Software
+    url: https://ieeexplore.ieee.org/rss/TOC52.XML
+  - name: ACM TOSEM
+    url: https://dl.acm.org/action/showFeed?type=etoc&feed=rss&jc=tosem
+  - name: IAPP Privacy
+    url: https://iapp.org/rss/news/
+  - name: AI Ethics Brief
+    url: https://montrealethics.ai/feed/
+  - name: The Gradient
+    url: https://thegradient.pub/rss/
+  - name: Interconnects (Nathan Lambert)
+    url: https://www.interconnects.ai/feed
+  - name: Simon Willison
+    url: https://simonwillison.net/atom/everything/
+  - name: Ahead of AI (Sebastian Raschka)
+    url: https://magazine.sebastianraschka.com/feed
+  - name: Test Feed
+    url: https://example.com/rss
 hacker_news:
-  enabled: false
-  cadence: "0 */3 * * *"
-  domain_whitelist: []
-
+  enabled: true
+  cadence: 0 */4 * * *
+  domain_whitelist:
+  - arxiv.org
+  - openreview.net
+  - semanticscholar.org
+  - github.com
+  - huggingface.co
 bluesky:
   enabled: false
   handles: []
-  queries: []
-  cadence: "0 */4 * * *"
-
+  queries:
+  - privacy engineering
+  - AI ethics
+  - requirements engineering
+  cadence: 0 */4 * * *
 conference_deadlines:
   enabled: false
-  cadence: "0 0 * * 1"
+  cadence: 0 0 * * 1
+web_monitor:
+  enabled: true
+  cadence: 0 */12 * * *
+  urls:
+  - name: Sepideh Ghanavati (Google Scholar)
+    url: https://scholar.google.com/citations?user=YOUR_ID&sortby=pubdate
+  - name: PERC Lab
+    url: https://www.sepidehghanavati.com/publications
