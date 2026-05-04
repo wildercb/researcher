@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from apps.api.deps import get_scheduler_instance, get_storage_instance
 from apps.api.routes import (
+    briefings,
     calibrate,
     chat,
     health,
@@ -67,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(pipeline.router)
     app.include_router(calibrate.router)
     app.include_router(settings.router)
+    app.include_router(briefings.router)
 
     # Serve static frontend in production
     static_dir = Path(__file__).parent.parent / "web" / "out"

@@ -179,3 +179,24 @@ export async function updateProvider(provider: string, model?: string): Promise<
     body: JSON.stringify({ provider, model }),
   });
 }
+
+// Briefings
+export interface BriefingData {
+  id: number;
+  period: string;
+  content: string;
+  created_at: string;
+  must_read_count: number;
+  on_radar_count: number;
+}
+
+export async function fetchBriefings(): Promise<{ briefings: BriefingData[] }> {
+  return request("/api/briefings/");
+}
+
+export async function generateBriefing(period?: string): Promise<BriefingData> {
+  return request("/api/briefings/generate", {
+    method: "POST",
+    body: JSON.stringify({ period: period || "daily" }),
+  });
+}

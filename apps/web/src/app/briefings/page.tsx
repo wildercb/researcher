@@ -1,17 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { Newspaper, Sparkles, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Newspaper, Sparkles, Loader2 } from "lucide-react";
+import { fetchBriefings, generateBriefing, type BriefingData } from "@/lib/api";
 
 export default function BriefingsPage() {
-  const [showMessage, setShowMessage] = useState(false);
+  const [briefings, setBriefings] = useState<BriefingData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = () => {
-    setShowMessage(true);
+  useEffect(() => {
+    loadBriefings();
+  }, []);
+
+  const loadBriefings = async () => {
+    try {
+      const data = await fetchBriefings();
+      setBriefings(data.briefings);
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const briefing = await generateBriefing("daily");
+      if ((briefing as unknown as { error?: string }).error) {
+        setError((briefing as unknown as { error: string }).error);
+      } else {
+        setBriefings((prev) => [briefing, ...prev]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate briefing");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-4xl mx-auto">
       <header className="border-b border-[var(--sidebar-border)] pb-4 mb-6">
         <div className="flex items-center justify-between">
           <div>
@@ -25,51 +56,72 @@ export default function BriefingsPage() {
           </div>
           <button
             onClick={handleGenerate}
-            className="flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-sm rounded-lg px-4 py-2 transition-colors"
+            disabled={generating}
+            className="flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white text-sm rounded-lg px-4 py-2 transition-colors"
           >
-            <Sparkles size={16} />
-            Generate Briefing
+            {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            {generating ? "Generating..." : "Generate Briefing"}
           </button>
         </div>
       </header>
 
-      {/* LLM Key Message */}
-      {showMessage && (
-        <div className="rounded-xl border border-yellow-800/50 bg-yellow-900/20 p-4 mb-6 flex items-start gap-3">
-          <AlertCircle size={18} className="text-yellow-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm text-yellow-200 font-medium">LLM API key required</p>
-            <p className="text-xs text-yellow-300/70 mt-1">
-              To generate briefings, configure your LLM API key in the server environment variables (OPENAI_API_KEY or ANTHROPIC_API_KEY). Once set, briefings will be generated automatically.
-            </p>
-          </div>
+      {error && (
+        <div className="rounded-xl border border-red-800/50 bg-red-900/20 p-4 mb-6">
+          <p className="text-sm text-red-300">{error}</p>
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Daily briefing placeholder */}
-        <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-6">
-          <h3 className="text-sm font-medium mb-2">Daily Briefing</h3>
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 size={24} className="animate-spin text-[var(--accent)]" />
+        </div>
+      )}
+
+      {!loading && briefings.length === 0 && (
+        <div className="rounded-xl border border-dashed border-[var(--card-border)] p-8 text-center">
+          <Newspaper size={40} className="mx-auto text-[var(--muted)] mb-3" />
+          <h3 className="text-sm font-medium mb-1">No briefings yet</h3>
           <p className="text-xs text-[var(--muted)]">
-            Daily and weekly briefings will appear here once your research seeds are configured and the pipeline is running.
+            Click &quot;Generate Briefing&quot; to create one from your enriched items.
           </p>
         </div>
+      )}
 
-        {/* Weekly briefing placeholder */}
-        <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-6">
-          <h3 className="text-sm font-medium mb-2">Weekly Digest</h3>
-          <p className="text-xs text-[var(--muted)]">
-            A weekly summary of key developments, emerging trends, and notable papers across your research areas.
-          </p>
+      {briefings.map((b) => (
+        <div key={b.id} className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-6 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)]">
+                {b.period}
+              </span>
+              <span className="text-xs text-[var(--muted)]">
+                {new Date(b.created_at).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
+              <span>{b.must_read_count} must-read</span>
+              <span>{b.on_radar_count} on radar</span>
+            </div>
+          </div>
+          <div
+            className="prose prose-invert prose-sm max-w-none text-[var(--foreground)] [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-medium [&_a]:text-[var(--accent)] [&_a]:no-underline [&_a:hover]:underline [&_li]:text-xs [&_p]:text-xs [&_p]:leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: markdownToHtml(b.content) }}
+          />
         </div>
-      </div>
-
-      {/* Future briefing display area */}
-      <div className="mt-6 rounded-xl border border-dashed border-[var(--card-border)] bg-[var(--card-bg)]/50 p-8 flex items-center justify-center min-h-[200px]">
-        <p className="text-sm text-[var(--muted)] text-center">
-          Generated briefings will appear here
-        </p>
-      </div>
+      ))}
     </div>
   );
+}
+
+function markdownToHtml(md: string): string {
+  return md
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/^- (.*$)/gm, '<li>$1</li>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
 }
