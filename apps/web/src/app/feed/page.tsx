@@ -223,15 +223,12 @@ export default function FeedPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  {/* Title */}
+                  {/* Title — links to detail page */}
                   <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`/item/${item.id}`}
                     className="text-sm font-medium hover:text-[var(--accent)] transition-colors inline-flex items-center gap-1.5"
                   >
                     {item.title}
-                    <ExternalLink size={12} className="flex-shrink-0 opacity-50" />
                   </a>
 
                   {/* Authors */}

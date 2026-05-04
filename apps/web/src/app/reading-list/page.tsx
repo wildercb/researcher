@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BookOpen, ExternalLink, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { fetchItems, type ItemData } from "@/lib/api";
 
 export default function ReadingListPage() {
@@ -52,21 +53,17 @@ export default function ReadingListPage() {
       {!loading && items.length > 0 && (
         <div className="space-y-3">
           {items.map((item) => (
-            <div
+            <Link
               key={item.id}
-              className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5 transition-colors hover:border-[var(--accent)]/30"
+              href={`/item/${item.id}`}
+              className="block rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5 transition-colors hover:border-[var(--accent)]/30"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium hover:text-[var(--accent)] transition-colors inline-flex items-center gap-1.5"
-                  >
+                  <div className="text-sm font-medium flex items-center gap-1.5">
                     {item.title}
-                    <ExternalLink size={12} className="flex-shrink-0 opacity-50" />
-                  </a>
+                    {item.url && <ExternalLink size={12} className="flex-shrink-0 opacity-30" />}
+                  </div>
                   <div className="flex items-center gap-2 mt-1.5">
                     {item.authors.length > 0 && (
                       <span className="text-xs text-[var(--muted)]">
@@ -97,7 +94,7 @@ export default function ReadingListPage() {
                   )}
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
