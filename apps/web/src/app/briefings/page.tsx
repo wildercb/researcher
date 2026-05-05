@@ -1,28 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Newspaper, Sparkles, Loader2, Brain, FileText } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Newspaper, Sparkles, Loader2, Brain, FileText, Zap } from "lucide-react";
 import { fetchBriefings, generateBriefing, type BriefingData } from "@/lib/api";
 
-type BriefingMode = "basic" | "deep";
+type BriefingMode = "basic" | "ollama" | "api" | "claude-code";
 
 export default function BriefingsPage() {
   const [briefings, setBriefings] = useState<BriefingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [mode, setMode] = useState<BriefingMode>("deep");
+  const [mode, setMode] = useState<BriefingMode>("api");
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { loadBriefings(); }, []);
-
-  const loadBriefings = async () => {
+  const loadBriefings = useCallback(async () => {
     try {
       const data = await fetchBriefings();
       setBriefings(data.briefings);
     } catch {} finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => { loadBriefings(); }, [loadBriefings]);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -32,7 +32,26 @@ export default function BriefingsPage() {
       if ((result as unknown as { error?: string }).error) {
         setError((result as unknown as { error: string }).error);
       } else {
-        setBriefings((prev) => [result, ...prev]);
+        // For claude-code mode, poll for completion
+        if ((result as unknown as { status?: string }).status === "generating") {
+          setBriefings((prev) => [result, ...prev.filter(b => b.id !== result.id)]);
+          // Poll every 5s for up to 2 minutes
+          let attempts = 0;
+          const poll = setInterval(async () => {
+            attempts++;
+            try {
+              const updated = await fetchBriefings();
+              const latest = updated.briefings.find(b => b.id === result.id);
+              if (latest && !(latest as unknown as { status?: string }).status) {
+                clearInterval(poll);
+                setBriefings(updated.briefings);
+              }
+            } catch {}
+            if (attempts > 24) clearInterval(poll);
+          }, 5000);
+        } else {
+          setBriefings((prev) => [result, ...prev]);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate briefing");
@@ -52,26 +71,34 @@ export default function BriefingsPage() {
             </h2>
             <p className="text-xs text-[var(--muted)] mt-1">Research analysis with trends, gaps, and paper ideas</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-[var(--card-border)] overflow-hidden">
-              <button onClick={() => setMode("basic")} className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium transition-colors ${mode === "basic" ? "bg-[var(--accent)] text-white" : "bg-[var(--input-bg)] text-[var(--muted)]"}`}>
-                <FileText size={11} /> Summary
-              </button>
-              <button onClick={() => setMode("deep")} className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium transition-colors ${mode === "deep" ? "bg-[var(--accent)] text-white" : "bg-[var(--input-bg)] text-[var(--muted)]"}`}>
-                <Brain size={11} /> Full Analysis
-              </button>
-            </div>
-            <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white text-sm rounded-lg px-4 py-2 transition-colors">
-              {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              {generating ? "Generating..." : "Generate"}
-            </button>
-          </div>
+          <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white text-sm rounded-lg px-4 py-2 transition-colors">
+            {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            {generating ? "Generating..." : "Generate"}
+          </button>
         </div>
       </header>
 
-      <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4 mb-6 text-xs text-[var(--muted)]">
-        {mode === "basic" && "Summary: paper listings with authors, venues, scores, topics, and active authors. Fast, no LLM."}
-        {mode === "deep" && "Full Analysis: everything in Summary plus LLM-powered trends, research gaps, paper ideas with target venues. Uses local Ollama model."}
+      {/* Mode selector */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button onClick={() => setMode("basic")} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors border ${mode === "basic" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--muted)] hover:border-[var(--accent)]/30"}`}>
+          <FileText size={13} /> Summary Only
+        </button>
+        <button onClick={() => setMode("ollama")} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors border ${mode === "ollama" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--muted)] hover:border-[var(--accent)]/30"}`}>
+          <Brain size={13} /> Ollama (Local)
+        </button>
+        <button onClick={() => setMode("api")} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors border ${mode === "api" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--muted)] hover:border-[var(--accent)]/30"}`}>
+          <Sparkles size={13} /> API (Anthropic/OpenAI)
+        </button>
+        <button onClick={() => setMode("claude-code")} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors border ${mode === "claude-code" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--muted)] hover:border-[var(--accent)]/30"}`}>
+          <Zap size={13} /> Claude Code
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3 mb-6 text-xs text-[var(--muted)]">
+        {mode === "basic" && "Paper listings with authors, venues, scores, topics. Instant, no LLM."}
+        {mode === "ollama" && "Full analysis via local Ollama model (granite4:micro). Includes trends, gaps, research ideas. ~30s."}
+        {mode === "api" && "Full analysis via Anthropic/OpenAI API. Best quality. Requires API key in environment."}
+        {mode === "claude-code" && "Full analysis via your current LLM config. Generates in background — page auto-refreshes when done."}
       </div>
 
       {error && (
@@ -86,7 +113,7 @@ export default function BriefingsPage() {
         <div className="rounded-xl border border-dashed border-[var(--card-border)] p-8 text-center">
           <Newspaper size={40} className="mx-auto text-[var(--muted)] mb-3" />
           <h3 className="text-sm font-medium mb-1">No briefings yet</h3>
-          <p className="text-xs text-[var(--muted)]">Click Generate to create one.</p>
+          <p className="text-xs text-[var(--muted)]">Select a mode and click Generate.</p>
         </div>
       ) : null}
 
@@ -98,6 +125,11 @@ export default function BriefingsPage() {
                 {(b as unknown as { mode?: string }).mode || b.period}
               </span>
               <span className="text-xs text-[var(--muted)]">{new Date(b.created_at).toLocaleDateString()}</span>
+              {(b as unknown as { status?: string }).status === "generating" && (
+                <span className="flex items-center gap-1 text-xs text-yellow-400">
+                  <Loader2 size={12} className="animate-spin" /> Generating analysis...
+                </span>
+              )}
             </div>
             {b.must_read_count > 0 && (
               <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
@@ -106,7 +138,7 @@ export default function BriefingsPage() {
               </div>
             )}
           </div>
-          <div className="prose prose-invert prose-sm max-w-none text-[var(--foreground)] [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-3 [&_a]:text-[var(--accent)] [&_a]:no-underline [&_a:hover]:underline [&_li]:text-xs [&_p]:text-xs [&_p]:leading-relaxed [&_strong]:text-[var(--foreground)]"
+          <div className="prose prose-invert prose-sm max-w-none text-[var(--foreground)] [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-3 [&_a]:text-[var(--accent)] [&_a]:no-underline [&_a:hover]:underline [&_li]:text-xs [&_p]:text-xs [&_p]:leading-relaxed [&_strong]:text-[var(--foreground)] [&_table]:text-xs [&_th]:text-left [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1 [&_table]:border-collapse [&_th]:border-b [&_th]:border-[var(--card-border)] [&_td]:border-b [&_td]:border-[var(--card-border)]"
             dangerouslySetInnerHTML={{ __html: markdownToHtml(b.content) }} />
         </div>
       ))}
@@ -115,7 +147,7 @@ export default function BriefingsPage() {
 }
 
 function markdownToHtml(md: string): string {
-  return md
+  let html = md
     .replace(/^### (.*$)/gm, '<h3>$1</h3>')
     .replace(/^## (.*$)/gm, '<h2>$1</h2>')
     .replace(/^# (.*$)/gm, '<h1>$1</h1>')
@@ -125,4 +157,14 @@ function markdownToHtml(md: string): string {
     .replace(/^- (.*$)/gm, '<li>$1</li>')
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>');
+
+  // Basic table support
+  html = html.replace(/\|(.+)\|/g, (match) => {
+    const cells = match.split('|').filter(c => c.trim());
+    if (cells.every(c => c.trim().match(/^[-:]+$/))) return ''; // separator row
+    const tag = cells.some(c => c.trim().match(/^[-:]+$/)) ? 'th' : 'td';
+    return '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+  });
+
+  return html;
 }
