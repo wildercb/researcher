@@ -194,9 +194,16 @@ export async function fetchBriefings(): Promise<{ briefings: BriefingData[] }> {
   return request("/api/briefings/");
 }
 
-export async function generateBriefing(period?: string): Promise<BriefingData> {
+export async function generateBriefing(period?: string, mode?: string): Promise<BriefingData> {
   return request("/api/briefings/generate", {
     method: "POST",
-    body: JSON.stringify({ period: period || "daily" }),
+    body: JSON.stringify({ period: period || "daily", mode: mode || "basic" }),
+  });
+}
+
+export async function saveBriefing(content: string, period?: string): Promise<BriefingData> {
+  return request("/api/briefings/save", {
+    method: "POST",
+    body: JSON.stringify({ content, period: period || "daily" }),
   });
 }
