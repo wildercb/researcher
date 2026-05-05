@@ -17,7 +17,7 @@ def test_load_prompt_relevance_scorer():
 
 def test_load_prompt_briefing_writer():
     prompt = load_prompt("briefing_writer", "v1")
-    assert "Must-Read" in prompt
+    assert "Key Trends" in prompt
 
 
 def test_load_prompt_ideation_agent():

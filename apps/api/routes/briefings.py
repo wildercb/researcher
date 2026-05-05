@@ -1,11 +1,6 @@
-"""Briefings API — generate and retrieve research briefings.
+"""Briefings API — comprehensive research briefings with paper listings, trends, gaps, ideas."""
 
-Supports two modes:
-- "basic": structured summary from item data (no LLM needed)
-- "deep": LLM analyzes papers for trends, gaps, research ideas, venue targets
-- "claude-code": returns items for Claude Code agent to generate briefing via PATCH
-"""
-
+from collections import Counter
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
@@ -35,53 +30,24 @@ async def get_briefing(briefing_id: int) -> dict:
 
 class GenerateRequest(BaseModel):
     period: str = "daily"
-    mode: str = "basic"  # "basic", "deep", or "claude-code"
+    mode: str = "basic"
 
 
 @router.post("/generate")
-async def generate_briefing(
-    req: GenerateRequest,
-    session: AsyncSession = Depends(get_session),
-) -> dict:
-    """Generate a briefing from top items."""
-    # Get top items with abstracts for deep analysis
+async def generate_briefing(req: GenerateRequest, session: AsyncSession = Depends(get_session)) -> dict:
     result = await session.execute(
-        select(Item)
-        .where(Item.relevance_score.isnot(None))
-        .order_by(Item.relevance_score.desc())
-        .limit(50)
+        select(Item).where(Item.relevance_score.isnot(None)).order_by(Item.relevance_score.desc()).limit(50)
     )
     items = result.scalars().all()
-
     if not items:
         return {"error": "No items with relevance scores. Run calibration first."}
 
-    if req.mode == "claude-code":
-        # Return raw data for Claude Code agent to generate briefing
-        return {
-            "mode": "claude-code",
-            "instruction": "Generate a deep research briefing using the items below. Include: key trends, gaps in the literature, research ideas with target venues, and an executive summary.",
-            "items": [
-                {
-                    "id": item.id,
-                    "title": item.title,
-                    "abstract": item.abstract[:500] if item.abstract else None,
-                    "authors": item.authors[:5] if isinstance(item.authors, list) else [],
-                    "venue": item.venue,
-                    "url": item.url,
-                    "score": round(item.relevance_score or 0, 2),
-                    "summary": item.summary,
-                    "tags": item.tags if isinstance(item.tags, list) else [],
-                }
-                for item in items[:30]
-            ],
-        }
-
     if req.mode == "deep":
-        # Try LLM-powered deep analysis
-        content = await _generate_deep_briefing(items)
+        content = await _generate_deep_briefing(items, req.period)
+    elif req.mode == "claude-code":
+        return _claude_code_payload(items)
     else:
-        content = _generate_basic_briefing(items, req.period)
+        content = _generate_comprehensive_briefing(items, req.period)
 
     now = datetime.now()
     briefing = {
@@ -104,7 +70,6 @@ class SaveBriefingRequest(BaseModel):
 
 @router.post("/save")
 async def save_briefing(req: SaveBriefingRequest) -> dict:
-    """Save a Claude Code-generated briefing."""
     now = datetime.now()
     briefing = {
         "id": len(_briefings),
@@ -119,93 +84,176 @@ async def save_briefing(req: SaveBriefingRequest) -> dict:
     return briefing
 
 
-def _generate_basic_briefing(items: list, period: str) -> str:
-    """Generate structured briefing without LLM."""
+def _generate_comprehensive_briefing(items: list, period: str) -> str:
+    """Generate a full briefing with paper listings, trends, gaps — no LLM needed."""
     now = datetime.now()
-    lines = [f"# {period.title()} Research Briefing", f"*{now.strftime('%B %d, %Y')}*\n"]
-
     must_read = [i for i in items if (i.relevance_score or 0) >= 0.7]
     on_radar = [i for i in items if 0.4 <= (i.relevance_score or 0) < 0.7]
 
+    lines = [
+        f"# {period.title()} Research Briefing",
+        f"*{now.strftime('%B %d, %Y')}* — {len(must_read)} must-read, {len(on_radar)} on-radar\n",
+    ]
+
+    # --- Must-Read ---
     if must_read:
-        lines.append("## Must-Read\n")
-        for item in must_read[:10]:
-            authors = ", ".join(item.authors[:3]) if isinstance(item.authors, list) else "Unknown"
+        lines.append("## Must-Read Papers\n")
+        for item in must_read[:15]:
+            authors = ", ".join(item.authors[:3]) if isinstance(item.authors, list) and item.authors else "Unknown"
+            extra_authors = f" +{len(item.authors) - 3}" if isinstance(item.authors, list) and len(item.authors) > 3 else ""
+            venue = item.venue or "Preprint"
             url = item.url or "#"
+            pub = ""
+            if item.published_at:
+                pub = f" | {item.published_at.strftime('%b %Y')}"
             lines.append(f"### [{item.title}]({url})")
-            lines.append(f"**{authors}**" + (f" — {item.venue}" if item.venue else ""))
-            lines.append(f"Relevance: {item.relevance_score:.2f}")
+            lines.append(f"**{authors}{extra_authors}** — {venue}{pub} | Relevance: {item.relevance_score:.0%}")
             if item.summary:
                 lines.append(f"\n{item.summary}")
+            elif item.abstract:
+                lines.append(f"\n{item.abstract[:200]}...")
             lines.append("")
 
+    # --- On the Radar ---
     if on_radar:
         lines.append("## On the Radar\n")
-        for item in on_radar[:10]:
+        for item in on_radar[:15]:
+            venue = item.venue or "Preprint"
             url = item.url or "#"
-            lines.append(f"- [{item.title}]({url}) — {item.relevance_score:.2f}")
+            score = f"{item.relevance_score:.0%}" if item.relevance_score else ""
+            desc = ""
+            if item.summary:
+                desc = f" — {item.summary[:80]}..."
+            lines.append(f"- [{item.title}]({url}) ({venue}, {score}){desc}")
+        lines.append("")
 
-    # Basic trends from tags
-    from collections import Counter
-
+    # --- Emerging Topics ---
     tag_counter: Counter = Counter()
+    author_counter: Counter = Counter()
+    venue_counter: Counter = Counter()
     for item in items:
-        tags = item.tags if isinstance(item.tags, list) else []
-        for tag in tags:
-            if isinstance(tag, str):
+        for tag in (item.tags if isinstance(item.tags, list) else []):
+            if isinstance(tag, str) and tag:
                 tag_counter[tag] += 1
+        for author in (item.authors if isinstance(item.authors, list) else []):
+            if isinstance(author, str) and author:
+                author_counter[author] += 1
+        if item.venue:
+            venue_counter[item.venue] += 1
+
     if tag_counter:
-        lines.append("\n## Emerging Topics\n")
-        for tag, count in tag_counter.most_common(8):
-            lines.append(f"- **{tag}** ({count} papers)")
+        lines.append("## Emerging Topics\n")
+        for tag, count in tag_counter.most_common(10):
+            lines.append(f"- **{tag}** — {count} papers")
+        lines.append("")
+
+    # --- Active Authors ---
+    if author_counter:
+        lines.append("## Most Active Authors\n")
+        for author, count in author_counter.most_common(10):
+            if count >= 2:
+                lines.append(f"- **{author}** — {count} papers")
+        lines.append("")
+
+    # --- Active Venues ---
+    if venue_counter:
+        lines.append("## Top Venues\n")
+        for venue, count in venue_counter.most_common(8):
+            if count >= 2:
+                lines.append(f"- **{venue}** — {count} papers")
+        lines.append("")
+
+    # --- Key Observations ---
+    lines.append("## Key Observations\n")
+    lines.append("*For deeper analysis with research ideas and gap identification, use Deep or Claude Code mode.*\n")
+
+    if must_read:
+        top_topics = [t for t, _ in tag_counter.most_common(3)]
+        if top_topics:
+            lines.append(f"- Dominant themes: {', '.join(top_topics)}")
+        lines.append(f"- {len(must_read)} papers scored above 70% relevance to your research interests")
+        papers_with_summaries = sum(1 for i in items if i.summary)
+        lines.append(f"- {papers_with_summaries}/{len(items)} papers have AI-generated summaries")
 
     return "\n".join(lines)
 
 
-async def _generate_deep_briefing(items: list) -> str:
-    """Generate LLM-powered deep briefing with trends, gaps, and research ideas."""
+async def _generate_deep_briefing(items: list, period: str) -> str:
+    """LLM-powered deep analysis on top of the paper listings."""
+    # First build the paper listing (always included)
+    base = _generate_comprehensive_briefing(items, period)
+
     try:
         from packages.agents.llm import completion
 
-        # Build context from papers
         paper_context = []
-        for item in items[:20]:
-            abstract = (item.abstract or "")[:300]
+        for item in items[:25]:
+            abstract = (item.abstract or "")[:400]
             summary = item.summary or ""
+            venue = item.venue or "unknown"
+            authors = ", ".join(item.authors[:3]) if isinstance(item.authors, list) else ""
+            pub = item.published_at.strftime("%b %Y") if item.published_at else "unknown date"
             paper_context.append(
-                f"- {item.title} ({item.venue or 'unknown venue'}, score={item.relevance_score:.2f})\n"
+                f"- [{item.relevance_score:.0%}] {item.title}\n"
+                f"  Authors: {authors} | Venue: {venue} | Date: {pub}\n"
                 f"  Summary: {summary}\n"
-                f"  Abstract: {abstract}"
+                f"  Abstract excerpt: {abstract}"
             )
 
         prompt = "\n".join(paper_context)
 
-        system = """You are a research intelligence analyst. Given the following papers from a researcher's feed, generate a comprehensive briefing with these sections:
+        result = await completion(prompt=prompt, system=DEEP_BRIEFING_PROMPT, agent_name="briefing_writer", max_tokens=3000)
+        analysis = result.get("content", "")
 
-## Executive Summary
-2-3 sentences: what's happening in this researcher's field right now.
-
-## Key Trends
-What themes are accelerating? What's getting more attention? (3-5 trends with evidence from the papers)
-
-## Gaps & Opportunities
-What's missing? Where do the papers point to unsolved problems or underexplored areas? (3-5 gaps)
-
-## Research Ideas
-Concrete research paper ideas grounded in the gaps above. For each:
-- **Title**: proposed paper title
-- **Key contribution**: what it would contribute
-- **Target venue**: where to submit (RE, ICSE, NeurIPS, COLM, etc.)
-- **Grounding**: which papers from the feed motivate this
-
-## What to Watch
-Authors, labs, or threads to follow based on this feed.
-
-Be specific and grounded. Every claim should trace to papers in the feed."""
-
-        result = await completion(prompt=prompt, system=system, agent_name="briefing_writer", max_tokens=3000)
-        return f"# Deep Research Briefing\n*{datetime.now().strftime('%B %d, %Y')}*\n\n{result.get('content', '')}"
+        return base + "\n\n---\n\n" + analysis
 
     except Exception as e:
-        # Fall back to basic if LLM unavailable
-        return _generate_basic_briefing(items, "daily") + f"\n\n---\n*Deep analysis unavailable: {e}*"
+        return base + f"\n\n---\n*Deep analysis unavailable ({e}). Switch to Claude Code mode for full analysis.*"
+
+
+def _claude_code_payload(items: list) -> dict:
+    """Return data for Claude Code agent to generate briefing."""
+    return {
+        "mode": "claude-code",
+        "instruction": "Generate a deep research briefing. Include: executive summary, key trends with evidence, gaps in the literature, 5 concrete research paper ideas with target venues and deadlines, and what to watch. Then save via POST /api/briefings/save.",
+        "items": [
+            {
+                "id": i.id,
+                "title": i.title,
+                "abstract": i.abstract[:500] if i.abstract else None,
+                "authors": i.authors[:5] if isinstance(i.authors, list) else [],
+                "venue": i.venue,
+                "published_at": i.published_at.isoformat() if i.published_at else None,
+                "url": i.url,
+                "score": round(i.relevance_score or 0, 2),
+                "summary": i.summary,
+                "tags": i.tags if isinstance(i.tags, list) else [],
+            }
+            for i in items[:30]
+        ],
+    }
+
+
+DEEP_BRIEFING_PROMPT = """You are a research intelligence analyst writing for an active researcher. Given papers from their feed (with relevance scores, venues, dates, summaries, and abstracts), produce ONLY the analysis sections below. The paper listings are already included separately — do NOT repeat them.
+
+## Key Trends
+What themes are accelerating? What connects multiple papers? (3-5 trends, cite specific papers as evidence)
+
+## Gaps & Research Opportunities
+What problems remain unsolved? Where do papers point to future work? (3-5 gaps, grounded in the papers)
+
+## Research Paper Ideas
+5 concrete paper ideas. For each:
+- **Title**: proposed paper title
+- **Key contribution**: 1-2 sentences on what it would contribute
+- **Target venue**: specific venue (RE, ICSE, NeurIPS, COLM, FSE, ACM TOSEM, IEEE Software, etc.)
+- **Why now**: what makes this timely based on the papers
+- **Grounding**: which 2-3 papers from the feed motivate this
+
+## Submission Timeline
+Table of recommended venues with estimated deadlines and which idea fits best.
+
+## What to Watch
+Authors, labs, or emerging threads the researcher should follow.
+
+Be specific and grounded. Every claim must trace to papers in the feed. No generic advice."""
