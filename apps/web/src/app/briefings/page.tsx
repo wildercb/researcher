@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Newspaper, Sparkles, Loader2, Zap, Brain, FileText } from "lucide-react";
+import { Newspaper, Sparkles, Loader2, Brain, FileText } from "lucide-react";
 import { fetchBriefings, generateBriefing, type BriefingData } from "@/lib/api";
 
-type BriefingMode = "basic" | "deep" | "claude-code";
+type BriefingMode = "basic" | "deep";
 
 export default function BriefingsPage() {
   const [briefings, setBriefings] = useState<BriefingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [mode, setMode] = useState<BriefingMode>("basic");
+  const [mode, setMode] = useState<BriefingMode>("deep");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { loadBriefings(); }, []);
@@ -31,8 +31,6 @@ export default function BriefingsPage() {
       const result = await generateBriefing("daily", mode);
       if ((result as unknown as { error?: string }).error) {
         setError((result as unknown as { error: string }).error);
-      } else if ((result as unknown as { mode?: string }).mode === "claude-code") {
-        setError("Claude Code mode: ask your Claude Code agent 'generate a deep briefing for me' and it will analyze your papers and save the result here.");
       } else {
         setBriefings((prev) => [result, ...prev]);
       }
@@ -57,31 +55,28 @@ export default function BriefingsPage() {
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-[var(--card-border)] overflow-hidden">
               <button onClick={() => setMode("basic")} className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium transition-colors ${mode === "basic" ? "bg-[var(--accent)] text-white" : "bg-[var(--input-bg)] text-[var(--muted)]"}`}>
-                <FileText size={11} /> Basic
+                <FileText size={11} /> Summary
               </button>
               <button onClick={() => setMode("deep")} className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium transition-colors ${mode === "deep" ? "bg-[var(--accent)] text-white" : "bg-[var(--input-bg)] text-[var(--muted)]"}`}>
-                <Brain size={11} /> Deep
-              </button>
-              <button onClick={() => setMode("claude-code")} className={`flex items-center gap-1 px-3 py-1.5 text-[10px] font-medium transition-colors ${mode === "claude-code" ? "bg-[var(--accent)] text-white" : "bg-[var(--input-bg)] text-[var(--muted)]"}`}>
-                <Zap size={11} /> Claude Code
+                <Brain size={11} /> Full Analysis
               </button>
             </div>
             <button onClick={handleGenerate} disabled={generating} className="flex items-center gap-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] disabled:opacity-50 text-white text-sm rounded-lg px-4 py-2 transition-colors">
-              {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />} Generate
+              {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+              {generating ? "Generating..." : "Generate"}
             </button>
           </div>
         </div>
       </header>
 
       <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4 mb-6 text-xs text-[var(--muted)]">
-        {mode === "basic" && "Basic: structured summary from item data. No LLM needed."}
-        {mode === "deep" && "Deep: LLM analyzes papers for trends, gaps, research ideas, and venue targets. Uses Ollama or API key."}
-        {mode === "claude-code" && "Claude Code: say 'generate a deep briefing' to your Claude Code agent — it reads papers and writes analysis with its own intelligence."}
+        {mode === "basic" && "Summary: paper listings with authors, venues, scores, topics, and active authors. Fast, no LLM."}
+        {mode === "deep" && "Full Analysis: everything in Summary plus LLM-powered trends, research gaps, paper ideas with target venues. Uses local Ollama model."}
       </div>
 
       {error && (
-        <div className="rounded-xl border border-yellow-800/50 bg-yellow-900/20 p-4 mb-6">
-          <p className="text-sm text-yellow-300">{error}</p>
+        <div className="rounded-xl border border-red-800/50 bg-red-900/20 p-4 mb-6">
+          <p className="text-sm text-red-300">{error}</p>
         </div>
       )}
 
