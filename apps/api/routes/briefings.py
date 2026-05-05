@@ -65,8 +65,25 @@ async def generate_briefing(
         model_override = _get_api_model()
         content = await _generate_llm_analysis(items, req.period, base_content, model_override)
     elif req.mode == "claude-code":
-        # Same as ollama/api — synchronous LLM call, waits for full result
-        content = await _generate_llm_analysis(items, req.period, base_content, None)
+        # Background generation — returns immediately, UI polls for result
+        briefing_id = len(_briefings)
+        briefing = {
+            "id": briefing_id,
+            "period": req.period,
+            "mode": "claude-code",
+            "content": base_content,
+            "created_at": now.isoformat(),
+            "must_read_count": sum(1 for i in items if (i.relevance_score or 0) >= 0.7),
+            "on_radar_count": sum(1 for i in items if 0.4 <= (i.relevance_score or 0) < 0.7),
+            "generating": True,
+        }
+        _briefings.insert(0, briefing)
+        # Fire background LLM task
+        import asyncio
+        asyncio.get_event_loop().create_task(
+            _background_llm_analysis(briefing_id, items, req.period, base_content)
+        )
+        return briefing
     else:
         content = base_content
 
@@ -199,8 +216,25 @@ async def _generate_llm_analysis(items: list, period: str, base_content: str, mo
         return base_content + f"\n\n---\n*LLM analysis failed: {e}*"
 
 
+async def _background_llm_analysis(briefing_id: int, items: list, period: str, base_content: str) -> None:
+    """Background: run LLM analysis and update the briefing in-place when done."""
+    try:
+        content = await _generate_llm_analysis(items, period, base_content, None)
+        for b in _briefings:
+            if b.get("id") == briefing_id:
+                b["content"] = content
+                b["generating"] = False
+                break
+    except Exception as e:
+        for b in _briefings:
+            if b.get("id") == briefing_id:
+                b["content"] = base_content + f"\n\n---\n*Analysis failed: {e}*"
+                b["generating"] = False
+                break
+
+
 async def _claude_code_generate(placeholder_id: int, base_content: str, item_data: list[dict], period: str) -> None:
-    """Background task: generate analysis using the configured LLM and update the placeholder."""
+    """Legacy background task."""
     try:
         from packages.agents.llm import completion
 

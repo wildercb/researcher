@@ -31,14 +31,33 @@ export default function BriefingsPage() {
       const result = await generateBriefing("daily", mode);
       if ((result as unknown as { error?: string }).error) {
         setError((result as unknown as { error: string }).error);
-      } else {
-        setBriefings((prev) => [result, ...prev]);
+        setGenerating(false);
+        return;
+      }
+      // Add to list immediately
+      setBriefings((prev) => [result, ...prev.filter(b => b.id !== result.id)]);
+
+      // If generating in background (claude-code), poll until done
+      if ((result as unknown as { generating?: boolean }).generating) {
+        const pollId = setInterval(async () => {
+          try {
+            const updated = await fetchBriefings();
+            const latest = updated.briefings.find(b => b.id === result.id);
+            if (latest && !(latest as unknown as { generating?: boolean }).generating) {
+              clearInterval(pollId);
+              setBriefings(updated.briefings);
+              setGenerating(false);
+            }
+          } catch {}
+        }, 3000);
+        // Safety: stop polling after 5 minutes
+        setTimeout(() => { clearInterval(pollId); setGenerating(false); }, 300000);
+        return;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate briefing");
-    } finally {
-      setGenerating(false);
     }
+    setGenerating(false);
   };
 
   return (
