@@ -32,26 +32,7 @@ export default function BriefingsPage() {
       if ((result as unknown as { error?: string }).error) {
         setError((result as unknown as { error: string }).error);
       } else {
-        // For claude-code mode, poll for completion
-        if ((result as unknown as { status?: string }).status === "generating") {
-          setBriefings((prev) => [result, ...prev.filter(b => b.id !== result.id)]);
-          // Poll every 5s for up to 2 minutes
-          let attempts = 0;
-          const poll = setInterval(async () => {
-            attempts++;
-            try {
-              const updated = await fetchBriefings();
-              const latest = updated.briefings.find(b => b.id === result.id);
-              if (latest && !(latest as unknown as { status?: string }).status) {
-                clearInterval(poll);
-                setBriefings(updated.briefings);
-              }
-            } catch {}
-            if (attempts > 24) clearInterval(poll);
-          }, 5000);
-        } else {
-          setBriefings((prev) => [result, ...prev]);
-        }
+        setBriefings((prev) => [result, ...prev]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate briefing");

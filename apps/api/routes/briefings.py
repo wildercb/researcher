@@ -59,32 +59,14 @@ async def generate_briefing(
 
     if req.mode == "basic":
         content = base_content
-    elif req.mode in ("ollama", "api"):
-        # Run LLM analysis (ollama uses local model, api uses configured API key model)
-        model_override = None
-        if req.mode == "api":
-            # Use the configured API model (anthropic/openai from models.yaml)
-            model_override = _get_api_model()
+    elif req.mode == "ollama":
+        content = await _generate_llm_analysis(items, req.period, base_content, None)
+    elif req.mode == "api":
+        model_override = _get_api_model()
         content = await _generate_llm_analysis(items, req.period, base_content, model_override)
     elif req.mode == "claude-code":
-        # Save a placeholder, then generate in background via Claude Code adapter
-        placeholder_id = len(_briefings)
-        placeholder = {
-            "id": placeholder_id,
-            "period": req.period,
-            "mode": "claude-code",
-            "content": base_content + "\n\n---\n\n*Deep analysis generating via Claude Code... refresh in ~60 seconds.*",
-            "created_at": now.isoformat(),
-            "must_read_count": sum(1 for i in items if (i.relevance_score or 0) >= 0.7),
-            "on_radar_count": sum(1 for i in items if 0.4 <= (i.relevance_score or 0) < 0.7),
-            "status": "generating",
-        }
-        _briefings.insert(0, placeholder)
-
-        # Kick off background generation
-        item_data = _serialize_items_for_analysis(items)
-        background_tasks.add_task(_claude_code_generate, placeholder_id, base_content, item_data, req.period)
-        return placeholder
+        # Same as ollama/api — synchronous LLM call, waits for full result
+        content = await _generate_llm_analysis(items, req.period, base_content, None)
     else:
         content = base_content
 
