@@ -113,56 +113,69 @@ async def save_briefing(req: SaveBriefingRequest) -> dict:
 # ---------------------------------------------------------------------------
 
 async def _get_diverse_items(session: AsyncSession) -> list:
-    """Get a diverse mix of papers for briefing generation.
+    """Get a diverse mix of OTHER PEOPLE'S papers for briefing.
 
-    Combines: top by relevance, recent additions, random sample,
-    and items not yet featured in a briefing.
+    Excludes the user's own seed papers (highest scores) since the user
+    already knows those. Focuses on: new discoveries, related work by
+    others, and fresh items from recent pipeline runs.
     """
+    # Get seed paper IDs to exclude (user's own papers)
+    from packages.core.models import Seed
+    seed_result = await session.execute(select(Seed.identifier))
+    seed_identifiers = {s[0].lower() for s in seed_result.all()}
+
     all_items = []
     seen_ids: set[int] = set()
 
-    # 1. Top 15 by relevance (the core must-reads)
+    def _is_seed_paper(item: Item) -> bool:
+        """Check if this is one of the user's own seed papers."""
+        if item.arxiv_id and item.arxiv_id.lower() in seed_identifiers:
+            return True
+        if item.doi and item.doi.lower() in seed_identifiers:
+            return True
+        return False
+
+    def _add(item: Item) -> None:
+        if item.id not in seen_ids and not _is_seed_paper(item):
+            all_items.append(item)
+            seen_ids.add(item.id)
+
+    # 1. Top 20 by relevance EXCLUDING seed papers (related work by others)
     result = await session.execute(
         select(Item).where(Item.relevance_score.isnot(None))
-        .order_by(Item.relevance_score.desc()).limit(15)
+        .order_by(Item.relevance_score.desc()).limit(40)
     )
     for item in result.scalars().all():
-        if item.id not in seen_ids:
-            all_items.append(item)
-            seen_ids.add(item.id)
+        _add(item)
+        if len(all_items) >= 20:
+            break
 
-    # 2. 15 most recently added items (freshness)
+    # 2. 15 most recently added items (freshness — new pipeline results)
     result = await session.execute(
-        select(Item).order_by(Item.created_at.desc()).limit(15)
+        select(Item).order_by(Item.created_at.desc()).limit(30)
     )
     for item in result.scalars().all():
-        if item.id not in seen_ids:
-            all_items.append(item)
-            seen_ids.add(item.id)
+        _add(item)
 
-    # 3. 10 random items with summaries (variety)
+    # 3. 10 random items with summaries (variety in each briefing)
     result = await session.execute(
         select(Item).where(Item.summary.isnot(None))
-        .order_by(func.random()).limit(10)
+        .order_by(func.random()).limit(20)
     )
     for item in result.scalars().all():
-        if item.id not in seen_ids:
-            all_items.append(item)
-            seen_ids.add(item.id)
+        _add(item)
 
-    # 4. 10 random items WITHOUT summaries (surface new stuff)
+    # 4. 10 random items WITHOUT summaries (surface undiscovered papers)
     result = await session.execute(
         select(Item).where(Item.summary.is_(None))
-        .order_by(func.random()).limit(10)
+        .order_by(func.random()).limit(20)
     )
     for item in result.scalars().all():
-        if item.id not in seen_ids:
-            all_items.append(item)
-            seen_ids.add(item.id)
+        _add(item)
 
-    # Shuffle the non-top items to vary ordering
-    top = all_items[:15]
-    rest = all_items[15:]
+    # Shuffle the non-top items for variety
+    top = all_items[:20]
+    rest = all_items[20:]
     random.shuffle(rest)
     return top + rest
 
