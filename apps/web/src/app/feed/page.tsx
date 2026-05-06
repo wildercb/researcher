@@ -83,9 +83,23 @@ export default function FeedPage() {
   const handleRunPipeline = async () => {
     setPipelineStatus("running");
     try {
-      const result = await triggerPipeline();
-      setPipelineStatus(result.status || "triggered");
-      setTimeout(() => setPipelineStatus(null), 3000);
+      await triggerPipeline();
+      // Poll for completion
+      const poll = setInterval(async () => {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8765"}/api/pipeline/status`);
+          const status = await res.json();
+          if (!status.running) {
+            clearInterval(poll);
+            const results = status.results || [];
+            const totalNew = results.reduce((sum: number, r: { new?: number }) => sum + (r.new || 0), 0);
+            setPipelineStatus(`Done! ${totalNew} new items`);
+            loadItems(searchText || undefined);
+            setTimeout(() => setPipelineStatus(null), 5000);
+          }
+        } catch {}
+      }, 3000);
+      setTimeout(() => clearInterval(poll), 300000);
     } catch {
       setPipelineStatus("error");
       setTimeout(() => setPipelineStatus(null), 3000);
