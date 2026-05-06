@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Newspaper, Sparkles, Loader2, Brain, FileText, Zap } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Newspaper, Sparkles, Loader2, Brain, FileText, Zap, CheckCircle } from "lucide-react";
 import { fetchBriefings, generateBriefing, type BriefingData } from "@/lib/api";
 
 type BriefingMode = "basic" | "ollama" | "api" | "claude-code";
@@ -10,8 +10,11 @@ export default function BriefingsPage() {
   const [briefings, setBriefings] = useState<BriefingData[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [mode, setMode] = useState<BriefingMode>("api");
+  const [mode, setMode] = useState<BriefingMode>("claude-code");
   const [error, setError] = useState<string | null>(null);
+  const [progressMsg, setProgressMsg] = useState<string | null>(null);
+  const [newBriefingId, setNewBriefingId] = useState<number | null>(null);
+  const topRef = useRef<HTMLDivElement>(null);
 
   const loadBriefings = useCallback(async () => {
     try {
@@ -27,37 +30,58 @@ export default function BriefingsPage() {
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
+    setProgressMsg("Preparing paper listings...");
+    setNewBriefingId(null);
+
     try {
       const result = await generateBriefing("daily", mode);
+
       if ((result as unknown as { error?: string }).error) {
         setError((result as unknown as { error: string }).error);
         setGenerating(false);
+        setProgressMsg(null);
         return;
       }
-      // Add to list immediately
-      setBriefings((prev) => [result, ...prev.filter(b => b.id !== result.id)]);
 
-      // If generating in background (claude-code), poll until done
+      const resultId = result.id;
+
+      // If background generating, poll for completion
       if ((result as unknown as { generating?: boolean }).generating) {
+        setProgressMsg("Paper listings ready. LLM analyzing trends, gaps & ideas...");
+        // Show the partial result immediately
+        setBriefings((prev) => [result, ...prev.filter(b => b.id !== resultId)]);
+
         const pollId = setInterval(async () => {
           try {
             const updated = await fetchBriefings();
-            const latest = updated.briefings.find(b => b.id === result.id);
+            const latest = updated.briefings.find(b => b.id === resultId);
             if (latest && !(latest as unknown as { generating?: boolean }).generating) {
               clearInterval(pollId);
               setBriefings(updated.briefings);
               setGenerating(false);
+              setProgressMsg(null);
+              setNewBriefingId(resultId);
+              topRef.current?.scrollIntoView({ behavior: "smooth" });
+              // Clear the "new" highlight after 10s
+              setTimeout(() => setNewBriefingId(null), 10000);
             }
           } catch {}
         }, 3000);
-        // Safety: stop polling after 5 minutes
-        setTimeout(() => { clearInterval(pollId); setGenerating(false); }, 300000);
-        return;
+        setTimeout(() => { clearInterval(pollId); setGenerating(false); setProgressMsg(null); }, 300000);
+      } else {
+        // Synchronous modes (basic, ollama, api)
+        setBriefings((prev) => [result, ...prev]);
+        setGenerating(false);
+        setProgressMsg(null);
+        setNewBriefingId(resultId);
+        topRef.current?.scrollIntoView({ behavior: "smooth" });
+        setTimeout(() => setNewBriefingId(null), 10000);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate briefing");
+      setGenerating(false);
+      setProgressMsg(null);
     }
-    setGenerating(false);
   };
 
   return (
@@ -80,26 +104,28 @@ export default function BriefingsPage() {
 
       {/* Mode selector */}
       <div className="flex flex-wrap gap-2 mb-4">
-        <button onClick={() => setMode("basic")} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors border ${mode === "basic" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--muted)] hover:border-[var(--accent)]/30"}`}>
-          <FileText size={13} /> Summary Only
-        </button>
-        <button onClick={() => setMode("ollama")} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors border ${mode === "ollama" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--muted)] hover:border-[var(--accent)]/30"}`}>
-          <Brain size={13} /> Ollama (Local)
-        </button>
-        <button onClick={() => setMode("api")} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors border ${mode === "api" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--muted)] hover:border-[var(--accent)]/30"}`}>
-          <Sparkles size={13} /> API (Anthropic/OpenAI)
-        </button>
-        <button onClick={() => setMode("claude-code")} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors border ${mode === "claude-code" ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--muted)] hover:border-[var(--accent)]/30"}`}>
-          <Zap size={13} /> Claude Code
-        </button>
+        {([
+          { id: "basic" as BriefingMode, icon: FileText, label: "Summary Only", desc: "Instant, no LLM" },
+          { id: "ollama" as BriefingMode, icon: Brain, label: "Ollama (Local)", desc: "~2-3 min" },
+          { id: "api" as BriefingMode, icon: Sparkles, label: "API", desc: "Needs API key" },
+          { id: "claude-code" as BriefingMode, icon: Zap, label: "Claude Code", desc: "~2-3 min" },
+        ]).map(m => (
+          <button key={m.id} onClick={() => setMode(m.id)} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors border ${mode === m.id ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]" : "border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--muted)] hover:border-[var(--accent)]/30"}`}>
+            <m.icon size={13} /> {m.label}
+          </button>
+        ))}
       </div>
 
-      <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-3 mb-6 text-xs text-[var(--muted)]">
-        {mode === "basic" && "Paper listings with authors, venues, scores, topics. Instant, no LLM."}
-        {mode === "ollama" && "Full analysis via local Ollama model (granite4:micro). Includes trends, gaps, research ideas. ~30s."}
-        {mode === "api" && "Full analysis via Anthropic/OpenAI API. Best quality. Requires API key in environment."}
-        {mode === "claude-code" && "Full analysis via your current LLM config. Generates in background — page auto-refreshes when done."}
-      </div>
+      {/* Progress banner */}
+      {progressMsg && (
+        <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/5 p-4 mb-6 flex items-center gap-3">
+          <Loader2 size={18} className="animate-spin text-[var(--accent)] flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-[var(--accent)]">{progressMsg}</p>
+            <p className="text-[10px] text-[var(--muted)] mt-0.5">This may take 2-3 minutes. The page will update automatically.</p>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-xl border border-red-800/50 bg-red-900/20 p-4 mb-6">
@@ -117,37 +143,46 @@ export default function BriefingsPage() {
         </div>
       ) : null}
 
-      {briefings.map((b) => (
-        <div key={b.id} className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] p-6 mb-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)]">
-                {(b as unknown as { mode?: string }).mode || b.period}
-              </span>
-              <span className="text-xs text-[var(--muted)]">{new Date(b.created_at).toLocaleDateString()}</span>
-              {(b as unknown as { status?: string }).status === "generating" && (
-                <span className="flex items-center gap-1 text-xs text-yellow-400">
-                  <Loader2 size={12} className="animate-spin" /> Generating analysis...
+      <div ref={topRef} />
+
+      {briefings.map((b) => {
+        const isNew = b.id === newBriefingId;
+        const isGenerating = (b as unknown as { generating?: boolean }).generating;
+        return (
+          <div key={b.id} className={`rounded-xl border p-6 mb-4 transition-all duration-500 ${
+            isNew ? "border-[var(--accent)] bg-[var(--accent)]/5 ring-1 ring-[var(--accent)]/20" :
+            isGenerating ? "border-yellow-700/30 bg-yellow-900/5" :
+            "border-[var(--card-border)] bg-[var(--card-bg)]"
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                {isNew && <CheckCircle size={14} className="text-green-400" />}
+                {isGenerating && <Loader2 size={14} className="animate-spin text-yellow-400" />}
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-[var(--accent)]/10 text-[var(--accent)]">
+                  {(b as unknown as { mode?: string }).mode || b.period}
                 </span>
+                <span className="text-xs text-[var(--muted)]">{new Date(b.created_at).toLocaleDateString()}</span>
+                {isNew && <span className="text-[10px] text-green-400 font-medium">NEW</span>}
+                {isGenerating && <span className="text-[10px] text-yellow-400">Analyzing...</span>}
+              </div>
+              {b.must_read_count > 0 && (
+                <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
+                  <span>{b.must_read_count} must-read</span>
+                  <span>{b.on_radar_count} on radar</span>
+                </div>
               )}
             </div>
-            {b.must_read_count > 0 && (
-              <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
-                <span>{b.must_read_count} must-read</span>
-                <span>{b.on_radar_count} on radar</span>
-              </div>
-            )}
+            <div className="prose prose-invert prose-sm max-w-none text-[var(--foreground)] [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-3 [&_a]:text-[var(--accent)] [&_a]:no-underline [&_a:hover]:underline [&_li]:text-xs [&_p]:text-xs [&_p]:leading-relaxed [&_strong]:text-[var(--foreground)]"
+              dangerouslySetInnerHTML={{ __html: markdownToHtml(b.content) }} />
           </div>
-          <div className="prose prose-invert prose-sm max-w-none text-[var(--foreground)] [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-3 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-2 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-3 [&_a]:text-[var(--accent)] [&_a]:no-underline [&_a:hover]:underline [&_li]:text-xs [&_p]:text-xs [&_p]:leading-relaxed [&_strong]:text-[var(--foreground)] [&_table]:text-xs [&_th]:text-left [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1 [&_table]:border-collapse [&_th]:border-b [&_th]:border-[var(--card-border)] [&_td]:border-b [&_td]:border-[var(--card-border)]"
-            dangerouslySetInnerHTML={{ __html: markdownToHtml(b.content) }} />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 function markdownToHtml(md: string): string {
-  let html = md
+  return md
     .replace(/^### (.*$)/gm, '<h3>$1</h3>')
     .replace(/^## (.*$)/gm, '<h2>$1</h2>')
     .replace(/^# (.*$)/gm, '<h1>$1</h1>')
@@ -155,16 +190,11 @@ function markdownToHtml(md: string): string {
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/^- (.*$)/gm, '<li>$1</li>')
+    .replace(/\|(.+)\|/g, (match) => {
+      const cells = match.split('|').filter(c => c.trim());
+      if (cells.every(c => c.trim().match(/^[-:]+$/))) return '';
+      return '<tr>' + cells.map(c => `<td style="padding:4px 8px;border-bottom:1px solid var(--card-border)">${c.trim()}</td>`).join('') + '</tr>';
+    })
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>');
-
-  // Basic table support
-  html = html.replace(/\|(.+)\|/g, (match) => {
-    const cells = match.split('|').filter(c => c.trim());
-    if (cells.every(c => c.trim().match(/^[-:]+$/))) return ''; // separator row
-    const tag = cells.some(c => c.trim().match(/^[-:]+$/)) ? 'th' : 'td';
-    return '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
-  });
-
-  return html;
 }
