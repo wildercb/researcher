@@ -93,6 +93,14 @@ class EnrichRequest(BaseModel):
     summary: str | None = None
     relevance_score: float | None = None
     relevance_reason: str | None = None
+    authors: list[str] | None = None
+    venue: str | None = None
+    published_at: str | None = None
+    doi: str | None = None
+    arxiv_id: str | None = None
+    url: str | None = None
+    pdf_url: str | None = None
+    tags: list[str] | None = None
     enrichment_status: str = "enriched"
 
 
@@ -102,7 +110,7 @@ async def patch_item(
     req: EnrichRequest,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Update item enrichment fields (used by Claude Code agent)."""
+    """Update any item fields (used by Claude Code agent)."""
     result = await session.execute(select(Item).where(Item.id == item_id))
     item = result.scalar_one_or_none()
     if not item:
@@ -113,5 +121,25 @@ async def patch_item(
         item.relevance_score = req.relevance_score
     if req.relevance_reason is not None:
         item.relevance_reason = req.relevance_reason
+    if req.authors is not None:
+        item.authors = req.authors
+    if req.venue is not None:
+        item.venue = req.venue
+    if req.published_at is not None:
+        from datetime import datetime
+        try:
+            item.published_at = datetime.fromisoformat(req.published_at)
+        except (ValueError, TypeError):
+            pass
+    if req.doi is not None:
+        item.doi = req.doi
+    if req.arxiv_id is not None:
+        item.arxiv_id = req.arxiv_id
+    if req.url is not None:
+        item.url = req.url
+    if req.pdf_url is not None:
+        item.pdf_url = req.pdf_url
+    if req.tags is not None:
+        item.tags = req.tags
     item.enrichment_status = req.enrichment_status
     return {"status": "updated", "id": item_id}
