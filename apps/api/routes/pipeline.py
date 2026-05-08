@@ -72,6 +72,9 @@ async def _run_pipeline(source: str | None, since: str | None, enrich: bool) -> 
 
     since_dt = datetime.strptime(since, "%Y-%m-%d") if since else None
 
+    # Fast sources first, slow/unreliable last
+    PRIORITY_ORDER = ["hacker_news", "rss", "openreview", "openalex", "web_monitor", "semantic_scholar", "arxiv"]
+
     sources_to_run = []
     if source:
         sources_to_run = [source]
@@ -80,11 +83,24 @@ async def _run_pipeline(source: str | None, since: str | None, enrich: bool) -> 
         if config_path.exists():
             with open(config_path) as f:
                 config = yaml.safe_load(f) or {}
-            sources_to_run = [name for name, cfg in config.items() if cfg.get("enabled")]
+            enabled = {name for name, cfg in config.items() if cfg.get("enabled")}
+            # Run in priority order, then any remaining
+            for s in PRIORITY_ORDER:
+                if s in enabled:
+                    sources_to_run.append(s)
+                    enabled.discard(s)
+            sources_to_run.extend(sorted(enabled))
 
     for src in sources_to_run:
+        _pipeline_status["current_source"] = src
         try:
-            result = await run_pipeline(src, storage, since=since_dt, enrich=enrich)
+            import asyncio
+            # Timeout per source: 60s for most, 120s for slow ones
+            timeout = 120 if src in ("arxiv", "semantic_scholar", "openreview") else 60
+            result = await asyncio.wait_for(
+                run_pipeline(src, storage, since=since_dt, enrich=enrich),
+                timeout=timeout,
+            )
             _pipeline_status["results"].append({
                 "source": src,
                 "fetched": result.fetched,
@@ -92,6 +108,12 @@ async def _run_pipeline(source: str | None, since: str | None, enrich: bool) -> 
                 "dupes": result.duplicates,
                 "elapsed": round(result.elapsed_seconds, 1),
             })
+        except TimeoutError:
+            _pipeline_status["results"].append({
+                "source": src,
+                "error": f"Timed out after {timeout}s",
+            })
+            logger.warning("pipeline_source_timeout", source=src, timeout=timeout)
         except Exception as e:
             _pipeline_status["results"].append({
                 "source": src,
@@ -101,4 +123,5 @@ async def _run_pipeline(source: str | None, since: str | None, enrich: bool) -> 
 
     await storage.close()
     _pipeline_status["running"] = False
+    _pipeline_status["current_source"] = None
     _pipeline_status["last_run"] = datetime.now().isoformat()

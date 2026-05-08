@@ -75,33 +75,42 @@ export default function FeedPage() {
     try {
       await sendFeedback(itemId, signal);
       setFeedbackIds((prev) => ({ ...prev, [itemId]: signal }));
-    } catch {
-      // silently fail
-    }
+      // If downvoted, visually fade it out after a moment
+      if (signal === "hidden") {
+        setTimeout(() => {
+          setItems((prev) => prev.filter((i) => i.id !== itemId));
+        }, 500);
+      }
+    } catch {}
   };
 
   const handleRunPipeline = async () => {
-    setPipelineStatus("running");
+    setPipelineStatus("Fetching...");
     try {
       await triggerPipeline();
-      // Poll for completion
       const poll = setInterval(async () => {
         try {
           const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8765"}/api/pipeline/status`);
           const status = await res.json();
-          if (!status.running) {
+          if (status.running) {
+            const done = (status.results || []).length;
+            const current = status.current_source || "...";
+            const newSoFar = (status.results || []).reduce((s: number, r: { new?: number }) => s + (r.new || 0), 0);
+            setPipelineStatus(`Fetching ${current}... (${done} sources done, ${newSoFar} new)`);
+          } else {
             clearInterval(poll);
             const results = status.results || [];
             const totalNew = results.reduce((sum: number, r: { new?: number }) => sum + (r.new || 0), 0);
-            setPipelineStatus(`Done! ${totalNew} new items`);
+            const errors = results.filter((r: { error?: string }) => r.error).length;
+            setPipelineStatus(`Done! ${totalNew} new items${errors ? `, ${errors} sources failed` : ""}`);
             loadItems(searchText || undefined);
-            setTimeout(() => setPipelineStatus(null), 5000);
+            setTimeout(() => setPipelineStatus(null), 8000);
           }
         } catch {}
-      }, 3000);
+      }, 2000);
       setTimeout(() => clearInterval(poll), 300000);
     } catch {
-      setPipelineStatus("error");
+      setPipelineStatus("Error starting pipeline");
       setTimeout(() => setPipelineStatus(null), 3000);
     }
   };
@@ -274,37 +283,43 @@ export default function FeedPage() {
                     </span>
                   </div>
 
-                  {/* Summary */}
-                  {item.summary && (
+                  {/* Summary or abstract fallback */}
+                  {item.summary ? (
                     <p className="text-xs text-[var(--muted)] mt-3 leading-relaxed line-clamp-3">
                       {item.summary}
                     </p>
-                  )}
+                  ) : item.abstract ? (
+                    <p className="text-xs text-[var(--muted)]/60 mt-3 leading-relaxed line-clamp-2 italic">
+                      {item.abstract.slice(0, 200)}...
+                    </p>
+                  ) : null}
                 </div>
 
                 {/* Feedback Buttons */}
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
                   <button
                     onClick={() => handleFeedback(item.id, "liked")}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] transition-all ${
                       feedbackIds[item.id] === "liked"
-                        ? "bg-green-900/40 text-green-400"
+                        ? "bg-green-900/40 text-green-400 scale-105"
                         : "bg-[var(--input-bg)] text-[var(--muted)] hover:text-green-400 hover:bg-green-900/20"
                     }`}
-                    title="Like"
+                    title="More like this — boosts similar papers in future"
                   >
-                    <ThumbsUp size={14} />
+                    <ThumbsUp size={12} />
+                    {feedbackIds[item.id] === "liked" ? "Saved" : ""}
                   </button>
                   <button
                     onClick={() => handleFeedback(item.id, "hidden")}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] transition-all ${
                       feedbackIds[item.id] === "hidden"
                         ? "bg-red-900/40 text-red-400"
                         : "bg-[var(--input-bg)] text-[var(--muted)] hover:text-red-400 hover:bg-red-900/20"
                     }`}
-                    title="Hide"
+                    title="Not relevant — reduces similar papers in future"
                   >
-                    <EyeOff size={14} />
+                    <EyeOff size={12} />
+                    {feedbackIds[item.id] === "hidden" ? "Hidden" : ""}
                   </button>
                 </div>
               </div>

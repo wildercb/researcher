@@ -86,7 +86,20 @@ async def item_feedback(
 ) -> dict:
     event = FeedbackEvent(item_id=item_id, signal=req.signal)
     session.add(event)
-    return {"status": "recorded", "signal": req.signal}
+
+    # Adjust item relevance based on feedback
+    result = await session.execute(select(Item).where(Item.id == item_id))
+    item = result.scalar_one_or_none()
+    if item:
+        current = item.relevance_score or 0.5
+        if req.signal == "liked":
+            item.relevance_score = min(1.0, current + 0.1)
+        elif req.signal == "hidden":
+            item.relevance_score = max(0.0, current - 0.2)
+        elif req.signal == "more_like_this":
+            item.relevance_score = min(1.0, current + 0.15)
+
+    return {"status": "recorded", "signal": req.signal, "effect": "relevance adjusted"}
 
 
 class EnrichRequest(BaseModel):
